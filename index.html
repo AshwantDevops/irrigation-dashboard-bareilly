@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irrigation Department - AE Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <!-- Google Sign-In API Script -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 1. Force dark black text for Sidebar navigation and labels */
+        aside nav button,
+        aside nav button span,
+        aside span,
+        aside p {
+            color: #0f172a !important;
+        }
+
+        /* 2. Force dark black text and clear visible placeholders for all inputs */
+        input,
+        select,
+        textarea {
+            color: #000000 !important;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: #475569 !important;
+            /* Darker gray for clear visibility */
+            opacity: 1 !important;
+        }
+
+        /* 3. Force dark black text for all tables across the dashboard */
+        table th,
+        table td,
+        table td span,
+        table td div {
+            color: #000000 !important;
+        }
+
+        #employeeList>div {
+            background-color: #84c1ff !important;
+            /* Light Slate */
+            border: 1px solid #0f62c7 !important;
+        }
+
+        #employeeList>div span,
+        #employeeList>div p {
+            color: #0f172a !important;
+            /* Keep text dark and legible */
+        }
+
+        #employeeList h4,
+        #employeeList .employee-name,
+        #employeeList strong {
+            color: #1e3a8a !important;
+            /* Change this hex code to your preferred color (e.g., #000000 for pure black) */
+        }
+
+        /* ===== SCROLLBAR FIX =====
+           The Employee Directory list gets its own fixed height and a
+           slim scrollbar, independent of the surrounding grid/flex
+           layout (that's what kept breaking — the parent grid was
+           resizing based on content, so a max-height here is the
+           reliable fix). Everything else stays in normal document
+           flow, so the page overall shouldn't need to scroll. */
+        html,
+        body {
+            overflow-x: hidden;
+        }
+
+        #employeeList {
+            max-height: 380px;
+            overflow-y: auto;
+        }
+
+        #employeeList::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #employeeList::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #employeeList::-webkit-scrollbar-thumb {
+            background-color: #94a3b8;
+            border-radius: 9999px;
+        }
+
+        #employeeList {
+            scrollbar-width: thin;
+            scrollbar-color: #94a3b8 transparent;
+        }
+    </style>
+</head>
+
+<body
+    class="font-sans min-h-screen flex flex-col bg-[#0B3A4A] text-slate-100 selection:bg-cyan-500 selection:text-white">
+    <!-- ================= EMPLOYEE LOGIN MODAL (GOOGLE SIGN-IN) ================= -->
+    <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
+
+        <!-- BACKGROUND IMAGE WITH BLUR & VIBRANT PURPLE OVERLAY -->
+        <div class="absolute inset-0 bg-cover bg-center filter blur-[0px] scale-105"
+            style="background-image: url('bg.jpg.jpeg');">
+        </div>
+        <div class="absolute inset-0 bg-[#0A2E3D]/85 backdrop-blur-md"></div>
+
+        <!-- HIGHLY REFINED GLASSMORPHISM LOGIN CARD -->
+        <div
+            class="relative z-10 bg-white/[0.12] backdrop-blur-2xl border border-white/20 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.4)] max-w-md w-full p-8 text-center space-y-6">
+
+            <!-- CUSTOM LOGO IMAGE CONTAINER -->
+            <div
+                class="w-20 h-20 mx-auto bg-white/15 border border-white/25 rounded-3xl flex items-center justify-center p-2 shadow-inner overflow-hidden transform hover:scale-105 transition-transform duration-300">
+                <img src="logo official.jpg" alt="Department Logo" class="w-full h-full object-contain rounded-2xl">
+            </div>
+
+            <div>
+                <h2 class="text-2xl font-extrabold text-white tracking-wide">Irrigation Office Portal</h2>
+                <p class="text-xs text-cyan-100 mt-1.5 font-medium">Please sign in securely using your official Google
+                    Account</p>
+            </div>
+
+            <div id="loginError"
+                class="text-rose-300 text-xs hidden font-semibold bg-rose-500/20 py-2 px-3 rounded-xl border border-rose-500/30">
+            </div>
+
+            <!-- Google Sign-In Button Container -->
+            <div class="flex justify-center pt-2">
+                <div id="g_id_onload"
+                    data-client_id="529147974963-52cc0bb0jh0o68vbv9svifcpck3jlp1f.apps.googleusercontent.com"
+                    data-callback="handleGoogleSignIn" data-auto_prompt="false">
+                </div>
+                <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="filled_blue"
+                    data-text="sign_in_with" data-size="large" data-logo_alignment="left">
+                </div>
+            </div>
+
+            <p class="text-center text-xs text-white/60 mt-4 font-light">Authorized departmental personnel only.</p>
+        </div>
+    </div>
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ================= APP-STYLE PROFILE SETTINGS MODAL ================= -->
+    <div id="profileModal"
+        class="fixed inset-0 bg-[#0A2E3D]/90 backdrop-blur-md z-50 hidden flex items-center justify-center sm:p-4">
+        <div
+            class="bg-[#0F4A5F] sm:rounded-[2rem] shadow-2xl border border-cyan-400/20 w-full sm:max-w-sm h-full sm:h-auto sm:max-h-[85vh] flex flex-col relative overflow-hidden">
+
+            <!-- Top Right Actions: Delete & Close Buttons -->
+            <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+                <button onclick="removeProfilePicture()" title="Remove Profile Picture"
+                    class="text-rose-300 hover:text-white bg-black/30 hover:bg-rose-500/30 p-2.5 rounded-full transition border border-rose-500/20 flex items-center justify-center text-sm shadow-md">
+                    🗑️
+                </button>
+                <button onclick="closeProfileSettings()" title="Close"
+                    class="text-cyan-100 hover:text-white bg-black/30 hover:bg-white/10 p-2.5 rounded-full transition flex items-center justify-center text-sm shadow-md">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Top Section: Big Circular Preview & Name -->
+            <div
+                class="flex-1 flex flex-col items-center justify-center p-8 bg-gradient-to-b from-[#134B60] to-[#0A2E3D] min-h-[300px]">
+                <div
+                    class="relative w-36 h-36 rounded-full border-4 border-cyan-300/40 flex items-center justify-center bg-cyan-950/40 overflow-hidden mb-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+                    <img id="modalUserAvatar" src="https://via.placeholder.com/150"
+                        class="w-full h-full object-cover hidden">
+                    <span id="circlePlaceholder" class="text-cyan-200 text-5xl">👤</span>
+                </div>
+                <h3 id="modalUserName" class="text-lg font-bold text-white tracking-wide"></h3>
+                <p id="modalUserPost"
+                    class="text-xs text-cyan-100 mt-1 font-medium bg-cyan-900/40 px-3 py-1 rounded-full border border-cyan-400/20">
+                </p>
+            </div>
+
+            <!-- Bottom Section: Stacked Action Buttons -->
+            <div class="flex flex-col w-full text-center divide-y divide-cyan-900/40 bg-[#0A3A4D]">
+                <label
+                    class="w-full py-4 px-4 hover:bg-cyan-800/40 cursor-pointer flex flex-col items-center justify-center gap-1.5 transition group">
+                    <span class="text-cyan-200 group-hover:scale-110 transition-transform text-lg">📷</span>
+                    <span class="text-[13px] font-semibold text-cyan-100">Take Your Photo</span>
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden"
+                        onchange="updateProfileImage(this)">
+                </label>
+                <label
+                    class="w-full py-4 px-4 hover:bg-cyan-800/40 cursor-pointer flex flex-col items-center justify-center gap-1.5 transition group">
+                    <span class="text-cyan-200 group-hover:scale-110 transition-transform text-lg">⚙️</span>
+                    <span class="text-[13px] font-semibold text-cyan-100">Use Photo Library</span>
+                    <input type="file" id="galleryInput" accept="image/*" class="hidden"
+                        onchange="updateProfileImage(this)">
+                </label>
+                <button onclick="closeProfileSettings()"
+                    class="w-full py-4 px-4 hover:bg-cyan-800/40 cursor-pointer flex flex-col items-center justify-center gap-0.5 transition text-cyan-200 hover:text-white">
+                    <span class="text-base font-bold">›</span>
+                    <span class="text-[12px] font-medium tracking-wide">Skip</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ================= FULL IMAGE VIEW MODAL ================= -->
+    <div id="fullImageViewModal"
+        class="fixed inset-0 bg-[#0A2E3D]/95 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4">
+        <button onclick="closeFullImageView()"
+            class="absolute top-6 right-6 text-cyan-100 hover:text-white text-base bg-black/40 hover:bg-white/10 p-3 rounded-full transition shadow-lg">✕</button>
+        <div class="max-w-md w-full flex flex-col items-center space-y-4">
+            <h3
+                class="text-xs font-bold text-cyan-100 tracking-wider uppercase bg-cyan-900/60 px-4 py-1.5 rounded-full border border-cyan-400/20">
+                Profile Picture</h3>
+            <div
+                class="w-72 h-72 sm:w-80 sm:h-80 rounded-full border-4 border-cyan-400/50 overflow-hidden bg-cyan-950 shadow-[0_0_40px_rgba(6,182,212,0.35)] flex items-center justify-center">
+                <img id="fullViewImg" src="" class="w-full h-full object-cover">
+            </div>
+            <p class="text-xs text-cyan-100 text-center font-medium">Full size profile view</p>
+        </div>
+    </div>
+
+    <!-- ================= MAIN DASHBOARD (Day / Light Mode Theme) ================= -->
+    <div id="mainDashboard" class="min-h-screen flex flex-col lg:flex-row relative overflow-x-hidden flex-1">
+
+        <!-- 🌟 Dynamic Light Colorful Background Glows & Blur Layer -->
+        <div class="absolute inset-0 bg-cover bg-center filter blur-[14px] scale-105 pointer-events-none -z-10 opacity-30"
+            style="background-image: url('bg.jpg.jpeg');">
+        </div>
+        <div
+            class="absolute inset-0 bg-gradient-to-br from-blue-50/90 via-slate-100/95 to-indigo-50/90 backdrop-blur-xl pointer-events-none -z-10">
+        </div>
+
+        <!-- Ambient Soft Colorful Orbs -->
+        <div
+            class="absolute top-10 left-10 w-[450px] h-[450px] bg-cyan-400/20 rounded-full blur-[140px] pointer-events-none -z-10">
+        </div>
+        <div
+            class="absolute top-1/2 right-10 w-[450px] h-[450px] bg-purple-400/20 rounded-full blur-[150px] pointer-events-none -z-10">
+        </div>
+        <div
+            class="absolute bottom-10 left-1/3 w-[450px] h-[450px] bg-emerald-400/20 rounded-full blur-[140px] pointer-events-none -z-10">
+        </div>
+
+        <!-- FIXED SIDEBAR -->
+        <aside
+            class="w-full lg:w-72 bg-white/90 backdrop-blur-2xl border-r border-slate-200 p-5 flex flex-col justify-between shrink-0 shadow-[0_0_30px_rgba(0,0,0,0.05)] z-10">
+            <div class="space-y-6">
+                <div
+                    class="flex flex-col items-center text-center p-5 bg-gradient-to-b from-blue-900 to-indigo-950 rounded-3xl border border-blue-800 shadow-md space-y-3">
+                    <span class="text-[10px] font-extrabold uppercase tracking-wider"
+                        style="background: linear-gradient(to right, #de3c3c, #c28686, #e02020); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">
+                        IRRIGATION AND WATER RESOURCES DEPARTMENT
+                    </span>
+
+                    <img src="logo official.jpg"
+                        class="w-20 h-20 rounded-2xl object-cover border-2 border-cyan-400 shadow-lg">
+
+                    <div class="flex flex-col space-y-1 w-full overflow-hidden">
+                        <h1 class="text-sm font-black tracking-tight leading-tight truncate"
+                            style="background: linear-gradient(to right, #67e8f9, #bfdbfe, #c7d2fe); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">
+                            Irrigation Division Bareilly</h1>
+                        <p class="text-xs font-bold tracking-wide"
+                            style="background: linear-gradient(to right, #67e8f9, #bfdbfe, #c7d2fe); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">
+                            5th Circle Irrigation work Bareilly
+                        </p>
+                        <p class="text-[10px] font-semibold truncate"
+                            style="background: linear-gradient(to right, #e68926, #c2ad73, #f7a533); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">
+                            Sharda Organization
+                        </p>
+                    </div>
+                </div>
+
+                <nav class="space-y-2">
+                    <button id="tabBtndashboard" onclick="switchTab('dashboard')"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-blue-50 to-cyan-50/50 hover:from-blue-600 hover:to-cyan-500 hover:text-white border border-blue-200 hover:border-transparent transition-all duration-300 shadow-sm group">
+                        <span class="text-base group-hover:scale-125 transition-transform">📊</span> Task Dashboard
+                    </button>
+
+                    <button id="tabBtnchat" onclick="switchTab('chat')"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-indigo-50 to-purple-50/50 hover:from-indigo-600 hover:to-purple-500 hover:text-white border border-indigo-200 hover:border-transparent transition-all duration-300 shadow-sm group">
+                        <span class="text-base group-hover:scale-125 transition-transform">💬</span> Office Team Chat
+                    </button>
+
+                    <button id="tabBtnSchedule" onclick="switchTab('Schedule')"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-emerald-50 to-teal-50/50 hover:from-emerald-600 hover:to-teal-500 hover:text-white border border-emerald-200 hover:border-transparent transition-all duration-300 shadow-sm group">
+                        <span class="text-base group-hover:scale-125 transition-transform">📅</span> Master Schedule
+                    </button>
+
+                    <button id="tabBtnAccount" onclick="switchTab('Account')"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-amber-50 to-orange-50/50 hover:from-amber-600 hover:to-orange-500 hover:text-white border border-amber-200 hover:border-transparent transition-all duration-300 shadow-sm group">
+                        <span class="text-base group-hover:scale-125 transition-transform">👤</span> My Account &
+                        Progress
+                    </button>
+
+                    <button id="tabBtnanalytics" onclick="switchTab('analytics')"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-fuchsia-50 to-pink-50/50 hover:from-fuchsia-600 hover:to-pink-500 hover:text-white border border-fuchsia-200 hover:border-transparent transition-all duration-300 shadow-sm group">
+                        <span class="text-base group-hover:scale-125 transition-transform">📈</span> Analytics & Reports
+                    </button>
+                </nav>
+            </div>
+            <!-- User Profile & Settings Section at Bottom -->
+            <div
+                class="pt-4 border-t border-slate-200 flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex items-center gap-2.5 cursor-pointer group truncate mr-2"
+                    onclick="openProfileSettings()">
+                    <div class="relative shrink-0">
+                        <img id="sidebarUserAvatar" src="https://via.placeholder.com/40"
+                            class="w-10 h-10 rounded-full object-cover border-2 border-cyan-500 group-hover:border-blue-500 transition shadow">
+                        <span
+                            class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-ping"></span>
+                        <span
+                            class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></span>
+                    </div>
+                    <div class="truncate">
+                        <span id="loggedInUserDisplay"
+                            class="text-xs text-slate-900 font-extrabold block truncate group-hover:text-cyan-700 transition"></span>
+                        <span class="text-[10px] text-pink-700 font-extrabold block">⚙️ Edit Profile</span>
+                    </div>
+                </div>
+                <button onclick="logout()"
+                    class="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition-all duration-300 shadow-md shrink-0">Logout</button>
+            </div>
+        </aside>
+        <!-- MAIN CONTENT AREA -->
+        <div class="flex-1 flex flex-col min-w-0 bg-transparent z-10">
+
+            <!-- Top Bar -->
+            <header
+                class="bg-white/90 backdrop-blur-2xl border-b border-slate-200 p-4 px-6 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+                <div>
+                    <h2 class="text-2xl md:text-2xl font-black text-transparent"
+                        style="background: linear-gradient(to right, #3705ff, #139dd3, #2f03a9); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">
+
+                        Department Task & Communication Hub</h2>
+                    <p class="text-s text-slate-600 font-medium"
+                        style="background: linear-gradient(to right, #3705ff, #139dd3, #2f03a9); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;">
+                        Manage field staff, tasks, and schedules seamlessly.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span
+                        class="text-xs bg-emerald-100 text-emerald-900 border border-emerald-300 px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-2 shadow-sm">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span> Live Sync Active
+                    </span>
+                </div>
+            </header>
+
+            <!-- TAB 1: TASK DASHBOARD -->
+            <main id="tabdashboard" class="p-4 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 items-stretch">
+                <!-- Left Column: Employee Directory -->
+                <div class="flex flex-col h-full">
+                    <section
+                        class="bg-white/95 backdrop-blur-2xl p-5 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 space-y-4 relative overflow-hidden flex-1 flex flex-col min-h-0">
+                        <div
+                            class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500">
+                        </div>
+                        <h1 style="background: linear-gradient(to right, #1da0ed, #0283b6, #2b42f1); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;"
+                            class="text-xl font-black text-slate-900 border-b ... shrink-0">
+                            Employee Directory
+                        </h1>
+                        <div class="space-y-3 flex-1 flex flex-col min-h-0">
+                            <div
+                                class="flex justify-between items-center text-base font-bold text-slate-700 px-1 shrink-0">
+                                <span>Active Staff Members</span>
+                                <span id="empCountBadge"
+                                    class="bg-cyan-100 text-cyan-900 px-3 py-1 rounded-xl border border-cyan-200 shadow-sm">0
+                                    Staff</span>
+                            </div>
+                            <!-- Employee Directory Container -->
+                            <div id="employeeList" class="space-y-2.5 flex-1 min-h-[10rem] overflow-y-auto pr-1"></div>
+                        </div>
+
+                        <!-- Add Employee Form -->
+                        <form id="addEmployeeForm" onsubmit="handleAddEmployee(event)"
+                            class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 shadow-inner shrink-0">
+                            <p class="text-base font-extrabold text-cyan-900 flex items-center gap-1.5"><span>➕</span>
+                                Add
+                                New Staff Member</p>
+                            <input type="text" id="newEmpName" required placeholder="Full Name"
+                                class="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 transition shadow-sm">
+                            <input type="text" id="newEmpPost" required placeholder="Post (e.g. J.E., Ziledar)"
+                                class="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 transition shadow-sm">
+                            <input type="email" id="newEmpEmail" required placeholder="Email Address"
+                                class="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 transition shadow-sm">
+                            <input type="text" id="newEmpPhone" required placeholder="Phone Number"
+                                class="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500 transition shadow-sm">
+                            <button type="submit"
+                                class="w-full bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold py-3 rounded-xl transition-all duration-300 shadow-md">Add
+                                Employee</button>
+                        </form>
+                    </section>
+                </div>
+
+                <!-- Right Column: Assign Task & Task Tracker -->
+                <div class="lg:col-span-2 flex flex-col h-full space-y-6">
+                    <!-- Assign Task Form -->
+                    <section
+                        class="bg-white/95 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 relative overflow-hidden shrink-0">
+                        <div
+                            class="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500">
+                        </div>
+                        <h1 style="background: linear-gradient(to right, #00ce48, #139dd3, #075753); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;"
+                            class="text-xl font-black text-slate-900 border-b ...">
+                            Assign New Work/Task</h1>
+                        <form id="taskForm" onsubmit="handleAssignTask(event)"
+                            class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Employee Name (Type or
+                                    Select)</label>
+                                <input type="text" id="taskAssignee" list="employeeOptions" required
+                                    class="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none transition shadow-sm"
+                                    placeholder="Type or choose employee name">
+                                <datalist id="employeeOptions"></datalist>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Deadline Date
+                                </label>
+                                <div class="relative">
+                                    <input type="date" id="taskDeadline" required
+                                        class="w-full p-3 pr-12 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer transition shadow-sm">
+                                    <span onclick="openCalendar()"
+                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700 cursor-pointer text-lg hover:scale-110 transition"></span>
+                                </div>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Work Description (Canal,
+                                    Site, Repairing Task)</label>
+                                <input type="text" id="taskDesc" required
+                                    class="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none transition shadow-sm"
+                                    placeholder="e.g. Canal Desilting - Sector 4 Inspection">
+                            </div>
+                            <div class="md:col-span-2 pt-2">
+                                <button type="submit"
+                                    class="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-bold py-3.5 rounded-2xl text-sm transition-all duration-300 shadow-md">Assign
+                                    Task & Send whatsapp Notification 🚀</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- Task Table Tracker -->
+                    <section
+                        class="bg-white/95 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 flex-1 flex flex-col min-h-0">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-200 pb-3 shrink-0">
+                            <h1 style="background: linear-gradient(to right, #00ce48, #139dd3, #075753); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;"
+                                class="text-xl font-black text-slate-900 border-b ...">
+                                Work Assignment and Status Tracker</h1>
+                            <button onclick="clearAllTasks()"
+                                class="bg-red-50 hover:bg-red-100 text-red-700 text-xs px-3.5 py-2 rounded-xl font-bold transition-all duration-300 border border-red-200 shadow-sm flex items-center gap-1">🗑️
+                                Clear All</button>
+                        </div>
+                        <div class="overflow-x-auto flex-1 min-h-0">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="bg-slate-100 text-slate-800 text-xs uppercase tracking-wider font-extrabold border-b border-slate-200">
+                                        <th class="p-3.5 rounded-l-2xl">Employee</th>
+                                        <th class="p-3.5">Work Assigned</th>
+                                        <th class="p-3.5">Deadline</th>
+                                        <th class="p-3.5 text-center">80%</th>
+                                        <th class="p-3.5 text-center">50%</th>
+                                        <th class="p-3.5 text-center">10%</th>
+                                        <th class="p-3.5">Status</th>
+                                        <th class="p-3.5 text-center rounded-r-2xl">Done</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="taskTableBody" class="text-sm divide-y divide-slate-200 font-semibold">
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </main>
+
+            <!-- TAB 2: OFFICE TEAM CHAT -->
+            <main id="tabchat" class="container mx-auto p-4 md:p-8 hidden flex-1 flex flex-col">
+                <section
+                    class="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 flex-1 flex flex-col overflow-hidden max-h-[78vh]">
+                    <div class="p-4 px-6 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="p-2 bg-indigo-100 text-indigo-800 rounded-2xl border border-indigo-200 text-lg">💬</span>
+                            <div>
+                                <h3 class="text-sm font-black text-slate-900">Office Coordination & Field Chat</h3>
+                                <p class="text-xs text-slate-600 font-medium">Discuss instructions and updates with
+                                    staff members live</p>
+                            </div>
+                        </div>
+                        <button onclick="clearChat()"
+                            class="text-xs text-red-700 hover:text-red-800 font-bold bg-red-50 px-3 py-1.5 rounded-xl border border-red-200 transition">Clear
+                            History</button>
+                    </div>
+                    <div id="chatBox" class="p-6 flex-1 overflow-y-auto space-y-4 bg-slate-50/50 font-medium"></div>
+                    <form id="chatForm" onsubmit="handleSendMessage(event)"
+                        class="p-4 bg-white border-t border-slate-200 flex gap-3">
+                        <input type="text" id="chatMessageInput" required
+                            placeholder="Type your message or field instruction here..."
+                            class="flex-1 p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:outline-none transition shadow-inner">
+                        <button type="submit"
+                            class="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-6 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-md">Send
+                            🚀</button>
+                    </form>
+                </section>
+            </main>
+
+            <!-- TAB 3: MASTER SCHEDULE -->
+            <main id="tabSchedule" class="container mx-auto p-4 md:p-8 hidden flex-1 flex flex-col">
+                <section
+                    class="bg-white/95 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 flex-1 flex flex-col overflow-hidden space-y-5">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-3">
+                        <h3 class="text-sm font-black text-slate-900 flex items-center gap-2">
+                            <span
+                                class="p-1.5 bg-emerald-100 text-emerald-800 rounded-xl border border-emerald-200">📅</span>
+                            Department Master Task Schedule (Annual Compliance)
+                        </h3>
+                    </div>
+                    <form id="addMasterScheduleForm" onsubmit="handleAddMasterSchedule(event)"
+                        class="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-3 shadow-inner">
+                        <input type="text" id="newMasterWork" required placeholder="Name of Work / Compliance Task"
+                            class="p-3.5 bg-white border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 md:col-span-1 transition">
+                        <input type="text" id="newMasterDeadline" required
+                            placeholder="Deadline / Frequency (e.g. Weekly)"
+                            class="p-3.5 bg-white border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+                        <button type="submit"
+                            class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-sm font-bold py-3.5 rounded-2xl transition-all shadow-md">➕
+                            Add to Master Schedule</button>
+                    </form>
+                    <div class="overflow-x-auto flex-1 max-h-[55vh]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-slate-100 text-slate-800 text-xs uppercase tracking-wider font-extrabold sticky top-0 border-b border-slate-200">
+                                    <th class="p-3.5 w-16 rounded-l-2xl">S.No.</th>
+                                    <th class="p-3.5">Name of Work / Task</th>
+                                    <th class="p-3.5 w-48">Deadline / Frequency</th>
+                                    <th class="p-3.5 w-40 text-center rounded-r-2xl">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterScheduleTableBody" class="text-sm divide-y divide-slate-200 font-semibold">
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+
+            <!-- TAB 4: MY ACCOUNT & PERSONAL PROGRESS -->
+            <main id="tabAccount" class="container mx-auto p-4 md:p-8 hidden flex-1 flex flex-col space-y-6">
+                <!-- Profile Overview Card -->
+                <section
+                    class="bg-white/95 backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+                    <div
+                        class="absolute top-0 right-0 w-64 h-64 bg-amber-100 rounded-full blur-[80px] pointer-events-none">
+                    </div>
+                    <div
+                        class="relative w-28 h-28 rounded-full border-4 border-amber-400 overflow-hidden bg-slate-100 shadow-xl shrink-0">
+                        <img id="accountUserAvatar" src="https://via.placeholder.com/150"
+                            class="w-full h-full object-cover hidden">
+                        <span id="accountUserPlaceholder"
+                            class="text-slate-500 text-5xl flex items-center justify-center h-full">👤</span>
+                    </div>
+                    <div class="space-y-2 text-center md:text-left flex-1">
+                        <h2 id="accountUserName"
+                            class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-amber-800 to-orange-800 tracking-wide">
+                        </h2>
+                        <p id="accountUserPost"
+                            class="text-xs text-amber-900 font-extrabold uppercase tracking-wider bg-amber-100 px-3.5 py-1 rounded-full border border-amber-200 inline-block shadow-sm">
+                        </p>
+                        <p class="text-xs text-slate-600 font-medium">Here is your personal task history and daily
+                            completion progress dashboard.</p>
+                    </div>
+                    <div
+                        class="bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200 px-6 py-4 rounded-3xl text-center shadow-md backdrop-blur-md">
+                        <span id="accountCompletedCount" class="text-3xl font-black text-amber-800 block">0</span>
+                        <span class="text-[10px] text-amber-900 uppercase tracking-widest font-black">Tasks
+                            Completed</span>
+                    </div>
+                </section>
+
+                <!-- Personal Tasks List Table -->
+                <section
+                    class="bg-white/95 backdrop-blur-2xl p-6 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 flex-1 flex flex-col overflow-hidden space-y-4">
+                    <div class="border-b border-slate-200 pb-3">
+                        <h3 class="text-sm font-black text-slate-900 flex items-center gap-2">
+                            <span class="p-1.5 bg-amber-100 text-amber-800 rounded-xl border border-amber-200">📋</span>
+                            Your Assigned Tasks & Progress Log
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr
+                                    class="bg-slate-100 text-slate-800 text-xs uppercase tracking-wider font-extrabold sticky top-0 border-b border-slate-200">
+                                    <th class="p-3.5 rounded-l-2xl">Work Description</th>
+                                    <th class="p-3.5">Deadline</th>
+                                    <th class="p-3.5 text-center">Milestones (80/50/10)</th>
+                                    <th class="p-3.5 rounded-r-2xl">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountTaskTableBody" class="text-sm divide-y divide-slate-200 font-semibold">
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+
+            <!-- 📊 TAB 5: ANALYTICS & PROGRESS HUB -->
+            <main id="tabanalytics" class="container mx-auto p-4 md:p-8 hidden flex-1 flex flex-col space-y-6">
+                <section
+                    class="bg-white/95 backdrop-blur-2xl p-6 md:p-8 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 space-y-6">
+                    <div class="border-b border-slate-200 pb-4">
+                        <h2
+                            class="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-700 via-pink-700 to-purple-700">
+                            📈 Office Analytics & Performance Hub</h2>
+                        <p class="text-xs text-slate-600 font-medium">Monitor overall department progress and staff-wise
+                            task completion rates visually.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Overall Office Progress (Pie Chart Box) -->
+                        <div
+                            class="bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                            <h3 class="text-sm font-extrabold mb-4 text-slate-900 text-center flex items-center gap-2">
+                                <span>📊</span> Overall Office Progress
+                            </h3>
+                            <div class="relative w-full h-[240px] flex items-center justify-center">
+                                <canvas id="overallPieChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Employee-wise Horizontal Bar Graph -->
+                        <div class="bg-slate-50 p-5 rounded-3xl border border-slate-200 shadow-sm lg:col-span-2">
+                            <h3 class="text-sm font-extrabold mb-4 text-slate-900 flex items-center gap-2">
+                                <span>📈</span> Employee-wise Performance Hub (All Staff)
+                            </h3>
+                            <div class="relative w-full h-[280px] lg:h-[300px]">
+                                <canvas id="employeeHorizontalBar"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+        </div>
+    </div>
+
+    <!-- Include your JavaScript file and EmailJS SDK -->
+    <script src="script.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function () {
+            emailjs.init("M5lVrkrg8qofYzCIx"); // EmailJS Public Key
+        })();
+    </script>
+</body>
+
+</html>
