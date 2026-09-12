@@ -245,8 +245,12 @@ function hideAuthModal() {
     if (mainDashboard) mainDashboard.classList.remove('hidden');
 }
 
-function handleGoogleSignIn(response) {
+async function handleGoogleSignIn(response) {
     hideLoginError();
+
+    // Ensure the latest employee master data is loaded before
+    // validating the Google account against employees.json.
+    await loadEmployees();
 
     if (!response || !response.credential) {
         showLoginError("Google Sign-In failed. Please try again.");
@@ -266,7 +270,13 @@ function handleGoogleSignIn(response) {
     );
 
     if (!matchedEmployee) {
-        showLoginError(`Access denied: "${payload.email}" is not registered as departmental personnel. Contact admin.`);
+        showLoginError(
+            `Access denied: "${payload.email}" is not registered as departmental personnel. Contact admin.`
+        );
+        console.warn(
+            "Google account was not found in employees.json:",
+            signedInEmail
+        );
         return;
     }
 
