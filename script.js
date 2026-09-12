@@ -116,6 +116,8 @@ let employeesLoaded = false;
 
 // ================= EMPLOYEE DATA =================
 async function loadEmployees() {
+    // Employee records are read-only application configuration.
+    // Source of truth: employees.json.
     if (employeesLoaded) {
         return employees;
     }
@@ -361,8 +363,8 @@ function initDashboard() {
 
 // ================= UTILS & STORAGE =================
 function saveData() {
-    localStorage.setItem('irr_employees', JSON.stringify(employees));
-    localStorage.setItem('irrigation_employees', JSON.stringify(employees));
+    // Employee master data is maintained in employees.json.
+    // Do not save employee records to localStorage.
     localStorage.setItem('irr_tasks', JSON.stringify(tasks));
     localStorage.setItem('irr_chat', JSON.stringify(chatMessages));
 }
@@ -523,7 +525,7 @@ function handleAddEmployee(e) {
     saveData();
     renderEmployees();
     document.getElementById('addEmployeeForm').reset();
-    showToast("New staff member added & saved permanently!", "success");
+    showToast("New staff member added for the current session.", "success");
     renderAnalyticsCharts();
 }
 
