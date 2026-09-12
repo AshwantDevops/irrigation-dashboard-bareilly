@@ -1401,7 +1401,10 @@ const deadlineDate =
             const key = `upcoming_${task.id}`;
             if (!reminderLog[key]) {
                 const msg = `⏰ Reminder - Irrigation Division Bareilly\n\nHi ${task.assignee}, your task "${task.desc}" is due TOMORROW (${task.deadline}). Please complete it and update your dashboard.`;
-                const sent = await sendWhatsAppReminderMessage(emp.phone, msg);
+                sendWhatsAppReminderMessage(
+    whatsappRecipient,
+    msg
+)
                 if (sent) {
                     reminderLog[key] = true;
                     saveReminderLog();
