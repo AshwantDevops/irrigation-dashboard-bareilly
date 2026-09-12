@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "employees": [
+    {
+      "id": 1,
+      "name": "Mr. V. K. Gupta",
+      "post": "E.E.",
+      "phone": "9415268975",
+      "email": "irrigationdivbly120@gmail.com"
+    },
+    {
+      "id": 2,
+      "name": "Punit Gupta",
+      "post": "A.E.",
+      "phone": "9412373730",
+      "email": "punitgupta1967@gmail.com"
+    },
+    {
+      "id": 3,
+      "name": "Navratan Singh",
+      "post": "A.E.",
+      "phone": "9634055283",
+      "email": "singhnavratan263@gmail.com"
+    },
+    {
+      "id": 4,
+      "name": "Vijay Goutam",
+      "post": "A.E.",
+      "phone": "9450078310",
+      "email": "vijaygoutam943@gmail.com"
+    },
+    {
+      "id": 5,
+      "name": "Miss Aparna Kumari",
+      "post": "A.E.",
+      "phone": "8528418142",
+      "email": "aparnakumari3356@gmail.com"
+    },
+    {
+      "id": 6,
+      "name": "Mr. Dinesh Kumar",
+      "post": "A.E.",
+      "phone": "9410680593",
+      "email": "dineshkumar29s@gmail.com"
+    },
+    {
+      "id": 7,
+      "name": "Ankur Chiang",
+      "post": "J.E.",
+      "phone": "8899163495",
+      "email": "ankurchiang@gmail.com"
+    },
+    {
+      "id": 8,
+      "name": "Chandan Lal",
+      "post": "Staff",
+      "phone": "8010354694",
+      "email": "chandanlal.jmi@gmail.com"
+    },
+    {
+      "id": 9,
+      "name": "Pramod Kumar",
+      "post": "Staff",
+      "phone": "9837556899",
+      "email": "pramodchauhan1177@gmail.com"
+    },
+    {
+      "id": 10,
+      "name": "Pradeep Tomara",
+      "post": "Staff",
+      "phone": "7275375610",
+      "email": "gaudhkiran@gmail.com"
+    },
+    {
+      "id": 11,
+      "name": "Sudhir Kumar",
+      "post": "Staff",
+      "phone": "9716545243",
+      "email": "sudhirkumar310@gmail.com"
+    },
+    {
+      "id": 12,
+      "name": "Sahdev Gangwar",
+      "post": "Staff",
+      "phone": "8948217409",
+      "email": "sahdevgangwar763@gmail.com"
+    },
+    {
+      "id": 13,
+      "name": "Mahendra Kumar",
+      "post": "Staff",
+      "phone": "9456042080",
+      "email": "mahendrasingh763@gmail.com"
+    },
+    {
+      "id": 14,
+      "name": "Sachin Kumar",
+      "post": "Staff",
+      "phone": "9557097502",
+      "email": "sky55899@gmail.com"
+    },
+    {
+      "id": 15,
+      "name": "Sachin Yadav",
+      "post": "Staff",
+      "phone": "8630692714",
+      "email": "salman782uz@gmail.com"
+    },
+    {
+      "id": 16,
+      "name": "Salman Pothrai",
+      "post": "Staff",
+      "phone": "9761063710",
+      "email": "vijaygoutam91@gmail.com"
+    },
+    {
+      "id": 17,
+      "name": "Vijay Kumar Gautham",
+      "post": "Staff",
+      "phone": "9456269383",
+      "email": "cpsingh749@gmail.com"
+    },
+    {
+      "id": 18,
+      "name": "C. P. Singh",
+      "post": "Staff",
+      "phone": "9412334708",
+      "email": "kapildevmoryalol@gmail.com"
+    },
+    {
+      "id": 19,
+      "name": "Kapil Maurya",
+      "post": "Staff",
+      "phone": "9795114811",
+      "email": "mohd.asim333@gmail.com"
+    },
+    {
+      "id": 20,
+      "name": "Azim Ansari",
+      "post": "Staff",
+      "phone": "9795114811",
+      "email": "mohd.asim333@gmail.com"
+    },
+    {
+      "id": 21,
+      "name": "swarnima sanwal",
+      "post": "tester",
+      "phone": "9412385810",
+      "email": "sanwalswarnima@gmail.com"
+    }
+  ]
+}
