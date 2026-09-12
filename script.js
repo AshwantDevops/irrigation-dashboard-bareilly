@@ -182,54 +182,59 @@ function getWhatsAppRecipient(employee) {
 }
 
 // ================= GLOBAL APP STATE =================
+
 let currentUser = null;
 
-// Master hardcoded employee list. Bump EMPLOYEE_DATA_VERSION any time
-// you edit this list so old cached data in visitors' browsers gets
-// cleared out automatically instead of silently overriding your edits.
-const EMPLOYEE_DATA_VERSION = "v2";
+// Employee data is maintained in employees.json.
+// Do not hardcode employee/user information in this file.
 
-let employees = [
-    { id: 1, name: "Mr. V. K. Gupta", post: "E.E.", phone: "9415268975", email: "irrigationdivbly120@gmail.com" },
-    { id: 2, name: "Punit Gupta", post: "A.E.", phone: "9412373730", email: "punitgupta1967@gmail.com" },
-    { id: 3, name: "Navratan Singh", post: "A.E.", phone: "9634055283", email: "singhnavratan263@gmail.com" },
-    { id: 4, name: "Vijay Goutam", post: "A.E.", phone: "9450078310", email: "vijaygoutam943@gmail.com" },
-    { id: 5, name: "Miss Aparna Kumari", post: "A.E.", phone: "8528418142", email: "aparnakumari3356@gmail.com" },
-    { id: 6, name: "Mr. Dinesh Kumar", post: "A.E.", phone: "9410680593", email: "dineshkumar29s@gmail.com" },
-    { id: 7, name: "Ankur Chiang", post: "J.E.", phone: "8899163495", email: "ankurchiang@gmail.com" },
-    { id: 8, name: "Chandan Lal", post: "Staff", phone: "8010354694", email: "chandanlal.jmi@gmail.com" },
-    { id: 9, name: "Pramod Kumar", post: "Staff", phone: "9837556899", email: "pramodchauhan1177@gmail.com" },
-    { id: 10, name: "Pradeep Tomara", post: "Staff", phone: "7275375610", email: "gaudhkiran@gmail.com" },
-    { id: 11, name: "Sudhir Kumar", post: "Staff", phone: "9716545243", email: "sudhirkumar310@gmail.com" },
-    { id: 12, name: "Sahdev Gangwar", post: "Staff", phone: "8948217409", email: "sahdevgangwar763@gmail.com" },
-    { id: 13, name: "Mahendra Kumar", post: "Staff", phone: "9456042080", email: "mahendrasingh763@gmail.com" },
-    { id: 14, name: "Sachin Kumar", post: "Staff", phone: "9557097502", email: "sky55899@gmail.com" },
-    { id: 15, name: "Sachin Yadav", post: "Staff", phone: "8630692714", email: "salman782uz@gmail.com" },
-    { id: 16, name: "Salman Pothrai", post: "Staff", phone: "9761063710", email: "vijaygoutam91@gmail.com" },
-    { id: 17, name: "Vijay Kumar Gautham", post: "Staff", phone: "9456269383", email: "cpsingh749@gmail.com" },
-    { id: 18, name: "C. P. Singh", post: "Staff", phone: "9412334708", email: "kapildevmoryalol@gmail.com" },
-    { id: 19, name: "Kapil Maurya", post: "Staff", phone: "9795114811", email: "mohd.asim333@gmail.com" },
-    { id: 20, name: "Azim Ansari", post: "Staff", phone: "9795114811", email: "mohd.asim333@gmail.com" },
-    { id: 21, name: "swarnima sanwal", post: "tester", phone: "9412385810", email: "sanwalswarnima@gmail.com" }
-];
+let employees = [];
 
-// ---- Version-guarded localStorage load for employees ----
-// If the saved data was written under an older version, wipe it so the
-// fresh hardcoded list above is used instead of silently stale data.
-if (typeof localStorage !== 'undefined') {
-    const savedVersion = localStorage.getItem('irrigation_employees_version');
-    if (savedVersion !== EMPLOYEE_DATA_VERSION) {
-        localStorage.removeItem('irrigation_employees');
-        localStorage.setItem('irrigation_employees_version', EMPLOYEE_DATA_VERSION);
-    } else if (localStorage.getItem('irrigation_employees')) {
-        try {
-            const savedEmployees = JSON.parse(localStorage.getItem('irrigation_employees'));
-            if (Array.isArray(savedEmployees) && savedEmployees.length > 0) {
-                employees = savedEmployees;
-            }
-        } catch (e) {
-            console.error("Error loading employees from storage", e);
+let employeesLoaded = false;
+
+// ================= EMPLOYEE DATA =================
+
+async function loadEmployees() {
+    if (employeesLoaded) {
+        return employees;
+    }
+
+    try {
+        const response = await fetch('./employees.json', {
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
+
+        const data = await response.json();
+
+        // Support either:
+        // 1. { "employees": [...] }
+        // 2. [...]
+        employees = Array.isArray(data)
+            ? data
+            : (data?.employees || []);
+
+        employeesLoaded = true;
+
+        console.log(
+            `Loaded ${employees.length} employees from employees.json`
+        );
+
+        return employees;
+
+    } catch (error) {
+
+        console.error(
+            'Unable to load employees.json:',
+            error
+        );
+
+        employees = [];
+
+        return employees;
     }
 }
 
