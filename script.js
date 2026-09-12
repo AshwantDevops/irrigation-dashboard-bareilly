@@ -6,6 +6,12 @@ async function sendWhatsAppNotification(
     const PHONE_NUMBER_ID = '1289877754212511';
     const ACCESS_TOKEN = 'REPLACE_WITH_YOUR_ACCESS_TOKEN';
 
+    if (!ACCESS_TOKEN || ACCESS_TOKEN === 'REPLACE_WITH_YOUR_ACCESS_TOKEN') {
+        console.error("WhatsApp Error: Meta access token is not configured.");
+        showToast("WhatsApp failed: Meta access token is not configured.", "error");
+        return false;
+    }
+
     if (!whatsappRecipient || String(whatsappRecipient).trim() === '') {
         console.error("WhatsApp Error: WhatsApp recipient ID is missing!");
         showToast("WhatsApp not sent: employee has no WhatsApp recipient ID configured.", "error");
@@ -638,6 +644,7 @@ async function handleAssignTask(e) {
             `No matching employee found for "${assignee}". Check spelling or pick from the list.`,
             "error"
         );
+        return;
     }
 
     const newTask = {
