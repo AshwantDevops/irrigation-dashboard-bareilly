@@ -4,7 +4,7 @@ async function sendWhatsAppNotification(
     deadline
 ) {
     const PHONE_NUMBER_ID = '1289877754212511';
-    const ACCESS_TOKEN = 'REPLACE_WITH_YOUR_ACCESS_TOKEN';
+    const ACCESS_TOKEN = 'EAAsNG5Sd0LsBSUuhaIR0aNZAeSSAKKqATwfjvPGLyN9syLRUO8AzdjKr6dArDw9TOm1kdzTXEr56023hmy7nGUKPYbbCinbpVh77O0MtY2xnukbYH2JCGuJmh8iQOBZCPOtZA5KuoKureWAU0FKBerKc1iYFb9Of58dsMOh4ZB4OXln5egh0RWiR8q8qnwFEZAgZDZD';
 
     if (!ACCESS_TOKEN || ACCESS_TOKEN === 'REPLACE_WITH_YOUR_ACCESS_TOKEN') {
         console.error("WhatsApp Error: Meta access token is not configured.");
