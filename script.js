@@ -1,52 +1,134 @@
-async function sendWhatsAppNotification(employeePhone, taskTitle, deadline) {
+async function sendWhatsAppNotification(
+    whatsappRecipient,
+    taskTitle,
+    deadline
+) {
     const PHONE_NUMBER_ID = '1289877754212511';
     const ACCESS_TOKEN = 'EAAsNG5Sd0LsBSUuhaIR0aNZAeSSAKKqATwfjvPGLyN9syLRUO8AzdjKr6dArDw9TOm1kdzTXEr56023hmy7nGUKPYbbCinbpVh77O0MtY2xnukbYH2JCGuJmh8iQOBZCPOtZA5KuoKureWAU0FKBerKc1iYFb9Of58dsMOh4ZB4OXln5egh0RWiR8q8qnwFEZAgZDZD';
 
-    if (!employeePhone || employeePhone === 'N/A' || String(employeePhone).trim() === '') {
-        console.error("WhatsApp Error: Employee phone number is missing or 'N/A'!");
-        showToast("WhatsApp not sent: employee has no phone number on file.", "error");
+    // Validate WhatsApp recipient
+    if (
+        !whatsappRecipient ||
+        String(whatsappRecipient).trim() === ''
+    ) {
+        console.error(
+            "WhatsApp Error: WhatsApp recipient ID is missing!"
+        );
+
+        showToast(
+            "WhatsApp not sent: employee has no WhatsApp recipient ID configured.",
+            "error"
+        );
+
         return;
     }
 
-    let cleanPhone = String(employeePhone).replace(/\D/g, '');
+    // Remove spaces, +, -, brackets, etc.
+    let cleanPhone =
+        String(whatsappRecipient).replace(/\D/g, '');
+
+    // Add India country code when only a 10-digit number is provided
     if (cleanPhone.length === 10) {
         cleanPhone = '91' + cleanPhone;
     }
 
-    const url = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
+    // Basic validation
+    if (cleanPhone.length < 10) {
+        console.error(
+            "WhatsApp Error: Invalid WhatsApp recipient:",
+            whatsappRecipient
+        );
+
+        showToast(
+            "WhatsApp not sent: invalid WhatsApp recipient ID.",
+            "error"
+        );
+
+        return;
+    }
+
+    const url =
+        `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
+
     const data = {
         messaging_product: "whatsapp",
+
         to: cleanPhone,
+
         type: "text",
+
         text: {
-            body: `📢 Irrigation Division Bareilly\n\nNew Task Assigned:\n📋 Task: ${taskTitle}\n⏰ Deadline: ${deadline}\n\nPlease check your dashboard.`
+            body:
+                `📢 Irrigation Division Bareilly\n\n` +
+                `New Task Assigned:\n` +
+                `📋 Task: ${taskTitle}\n` +
+                `⏰ Deadline: ${deadline}\n\n` +
+                `Please check your dashboard.`
         }
     };
 
     try {
-        let response = await fetch(url, {
+        const response = await fetch(url, {
             method: 'POST',
+
             headers: {
                 'Authorization': `Bearer ${ACCESS_TOKEN}`,
                 'Content-Type': 'application/json'
             },
+
             body: JSON.stringify(data)
         });
-        let result = await response.json();
+
+        const result = await response.json();
+
         if (response.ok) {
-            console.log("WhatsApp message sent successfully:", result);
-            showToast("WhatsApp notification delivered to employee.", "success");
+
+            console.log(
+                "WhatsApp message sent successfully:",
+                result
+            );
+
+            showToast(
+                "WhatsApp notification delivered to employee.",
+                "success"
+            );
+
+            return true;
+
         } else {
-            console.error("Failed to send WhatsApp:", result);
-            const errMsg = result?.error?.message || "Unknown error from WhatsApp API";
-            showToast(`WhatsApp failed: ${errMsg}`, "error");
+
+            console.error(
+                "Failed to send WhatsApp:",
+                result
+            );
+
+            const errMsg =
+                result?.error?.message ||
+                "Unknown error from WhatsApp API";
+
+            showToast(
+                `WhatsApp failed: ${errMsg}`,
+                "error"
+            );
+
+            return false;
         }
+
     } catch (error) {
-        console.error("Error connecting to WhatsApp API:", error);
-        showToast("WhatsApp API connection error. Check console / network.", "error");
+
+        console.error(
+            "Error connecting to WhatsApp API:",
+            error
+        );
+
+        showToast(
+            "WhatsApp API connection error. Check console / network.",
+            "error"
+        );
+
+        return false;
     }
 }
-
 // ================= WHATSAPP USER CONFIGURATION =================
 
 let whatsappUsers = {};
