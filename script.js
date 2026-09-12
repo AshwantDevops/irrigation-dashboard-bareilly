@@ -47,6 +47,58 @@ async function sendWhatsAppNotification(employeePhone, taskTitle, deadline) {
     }
 }
 
+// ================= WHATSAPP USER CONFIGURATION =================
+
+let whatsappUsers = {};
+let whatsappUsersLoaded = false;
+
+async function loadWhatsAppUsers() {
+    if (whatsappUsersLoaded) {
+        return whatsappUsers;
+    }
+
+    try {
+        const response = await fetch('./whatsapp-users.json', {
+            cache: 'no-store'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const config = await response.json();
+
+        whatsappUsers = config?.users || {};
+        whatsappUsersLoaded = true;
+
+    } catch (error) {
+        console.error(
+            'Unable to load whatsapp-users.json:',
+            error
+        );
+
+        whatsappUsers = {};
+    }
+
+    return whatsappUsers;
+}
+
+function getWhatsAppRecipient(employee) {
+    if (!employee) {
+        return '';
+    }
+
+    const configuredId =
+        whatsappUsers[String(employee.id)]?.whatsappUserId;
+
+    if (configuredId && String(configuredId).trim()) {
+        return String(configuredId).trim();
+    }
+
+    // Fallback to employee phone number
+    return employee.phone || '';
+}
+
 // ================= GLOBAL APP STATE =================
 let currentUser = null;
 
