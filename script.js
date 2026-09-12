@@ -597,8 +597,8 @@ function closeAddEmployeeModal() {
     if (modal) modal.style.display = 'none';
 }
 
-// ================= TASK MANAGEMENT (single, consolidated version) =================
-// Matches the actual HTML form field IDs: taskAssignee, taskDeadline, taskDesc
+// ================= TASK MANAGEMENT =================
+
 async function handleAssignTask(e) {
     if (e) e.preventDefault();
 
@@ -606,7 +606,9 @@ async function handleAssignTask(e) {
     const deadlineInput = document.getElementById('taskDeadline');
     const descInput = document.getElementById('taskDesc');
 
-    if (!assigneeInput || !deadlineInput || !descInput) return;
+    if (!assigneeInput || !deadlineInput || !descInput) {
+        return;
+    }
 
     const assignee = assigneeInput.value.trim();
     const deadline = deadlineInput.value;
@@ -617,45 +619,105 @@ async function handleAssignTask(e) {
         return;
     }
 
-    // Case-insensitive, whitespace-tolerant match against the employee list
+    // Find employee using the selected employee name.
     const foundEmp = employees.find(
-        emp => emp.name.trim().toLowerCase() === assignee.toLowerCase()
+        emp =>
+            emp.name &&
+            emp.name.trim().toLowerCase() ===
+            assignee.toLowerCase()
     );
 
     if (!foundEmp) {
-        showToast(`No matching employee found for "${assignee}". Check spelling or pick from the list.`, "error");
-        // We still record the task, but skip WhatsApp since there's no employee record.
+        showToast(
+            `No matching employee found for "${assignee}". Check spelling or pick from the list.`,
+            "error"
+        );
+
+        // Keep the existing behavior:
+        // task is still created even if employee is not found.
     }
 
+    // Create the task.
     const newTask = {
         id: Date.now(),
         assignee,
         deadline,
         desc,
+
         m80: false,
         m50: false,
         m10: false,
+
         status: "Pending",
-        done: false,           // employee ticks this when the task is actually finished
-        notifiedDone: false,   // guards against repeat "completed" toasts
-        notifiedMissed: false  // guards against repeat "missed deadline" toasts
+        done: false,
+
+        notifiedDone: false,
+        notifiedMissed: false
     };
 
+    // Save task.
     tasks.push(newTask);
+
     saveData();
     renderTasks();
     renderAccountTab();
 
-    document.getElementById('taskForm').reset();
+    // Reset form.
+    const taskForm = document.getElementById('taskForm');
 
-    if (foundEmp && foundEmp.phone && foundEmp.phone !== 'N/A') {
-        showToast("Task assigned. Sending WhatsApp notification...", "info");
-        await sendWhatsAppNotification(foundEmp.phone, desc, deadline);
-    } else if (foundEmp) {
-        showToast("Task assigned, but employee has no phone number on file.", "warning");
+    if (taskForm) {
+        taskForm.reset();
+    }
+
+    // ================= WHATSAPP NOTIFICATION =================
+    //
+    // Employee ID is used to find the WhatsApp recipient
+    // from whatsapp-users.json.
+    //
+    // Example:
+    //
+    // Employee ID 12
+    //       ↓
+    // whatsapp-users.json
+    //       ↓
+    // whatsappUserId
+    //       ↓
+    // WhatsApp API
+
+    if (foundEmp) {
+        await loadWhatsAppUsers();
+
+        const whatsappRecipient =
+            getWhatsAppRecipient(foundEmp);
+
+        if (whatsappRecipient) {
+
+            showToast(
+                "Task assigned. Sending WhatsApp notification...",
+                "info"
+            );
+
+            await sendWhatsAppNotification(
+                whatsappRecipient,
+                desc,
+                deadline
+            );
+
+        } else {
+
+            showToast(
+                "Task assigned, but no WhatsApp recipient ID is configured for this employee.",
+                "warning"
+            );
+
+            console.warn(
+                "No WhatsApp recipient configured for employee:",
+                foundEmp.id,
+                foundEmp.name
+            );
+        }
     }
 }
-
 // Returns true if a task's deadline (YYYY-MM-DD, from the date input) has
 // already passed as of today.
 function isTaskOverdue(deadlineStr) {
