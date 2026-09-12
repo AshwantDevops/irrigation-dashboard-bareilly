@@ -1372,9 +1372,25 @@ async function runAutomaticWhatsAppReminders() {
         const emp = employees.find(
             e => e.name && task.assignee && e.name.trim().toLowerCase() === task.assignee.trim().toLowerCase()
         );
-        if (!emp || !emp.phone || emp.phone === 'N/A') continue;
+        if (!emp) continue;
 
-        const deadlineDate = new Date(task.deadline);
+await loadWhatsAppUsers();
+
+const whatsappRecipient =
+    getWhatsAppRecipient(emp);
+
+if (!whatsappRecipient) {
+    console.warn(
+        "No WhatsApp recipient configured for:",
+        emp.id,
+        emp.name
+    );
+
+    continue;
+}
+
+const deadlineDate =
+    new Date(task.deadline);
         if (isNaN(deadlineDate.getTime())) continue;
         deadlineDate.setHours(0, 0, 0, 0);
 
