@@ -275,30 +275,56 @@ async function handleGoogleSignIn(response) {
         emp => emp.email && emp.email.trim().toLowerCase() === signedInEmail
     );
 
-    if (!matchedEmployee) {
-        showLoginError(
-            `Access denied: "${payload.email}" is not registered as departmental personnel. Contact admin.`
-        );
-        console.warn(
-            "Google account was not found in employees.json:",
+    if (matchedEmployee) {
+        // Registered departmental employee.
+        if (!matchedEmployee.avatar && payload.picture) {
+            matchedEmployee.avatar = payload.picture;
+        }
+
+        currentUser = matchedEmployee;
+
+        console.log(
+            "Departmental employee login:",
             signedInEmail
         );
-        return;
+
+    } else {
+        // Any authenticated Google user is allowed to sign in.
+        // employees.json is used only to enrich known departmental users;
+        // it is no longer an authentication allow-list.
+        currentUser = {
+            id: `google_${payload.sub || signedInEmail}`,
+            name: payload.name || signedInEmail.split('@')[0],
+            post: "User",
+            phone: "",
+            email: signedInEmail,
+            avatar: payload.picture || ""
+        };
+
+        console.log(
+            "New Google user login:",
+            signedInEmail
+        );
     }
 
-    if (!matchedEmployee.avatar && payload.picture) {
-        matchedEmployee.avatar = payload.picture;
-    }
+    sessionStorage.setItem(
+        'irr_logged_user',
+        JSON.stringify(currentUser)
+    );
 
-    currentUser = matchedEmployee;
-
-    sessionStorage.setItem('irr_logged_user', JSON.stringify(currentUser));
-    localStorage.setItem('irr_current_user', JSON.stringify(currentUser));
+    localStorage.setItem(
+        'irr_current_user',
+        JSON.stringify(currentUser)
+    );
 
     saveData();
     hideAuthModal();
     initDashboard();
-    showToast(`Welcome, ${currentUser.name}!`, "success");
+
+    showToast(
+        `Welcome, ${currentUser.name}!`,
+        "success"
+    );
 }
 
 function logout() {
@@ -346,12 +372,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindEvent('chatForm', 'submit', handleSendMessage);
     bindEvent('addMasterScheduleForm', 'submit', handleAddMasterSchedule);
 
-    const stillValid = !!currentUser && employees.some(
-        emp =>
-            emp.email &&
-            currentUser.email &&
-            emp.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
-    );
+    // A valid Google-authenticated session is sufficient.
+    // The employee master list is not an authentication allow-list.
+    const stillValid =
+        !!currentUser &&
+        !!currentUser.email;
 
     if (stillValid) {
         hideAuthModal();
