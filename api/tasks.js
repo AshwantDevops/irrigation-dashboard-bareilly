@@ -37,7 +37,14 @@ function taskLink(req, task) {
 
 module.exports = async function handler(req, res) {
   try {
-    const user = await authenticate(req);
+    const publicToken = req.query.token || req.body?.token || '';
+    const publicRequest = Boolean(publicToken);
+    let user = null;
+
+    if (!publicRequest) {
+      user = await authenticate(req);
+    }
+
     const { current, tasks } = await readTasks();
 
     if (req.method === 'GET') {
@@ -125,7 +132,7 @@ module.exports = async function handler(req, res) {
 
       // Dashboard users authenticate with Google. Public task page uses the per-task token.
       const tokenAllowed = body.token && body.token === task.publicToken;
-      if (!tokenAllowed && !user.email) {
+      if (!tokenAllowed && !user?.email) {
         return res.status(403).json({ message: 'Not authorized.' });
       }
 
