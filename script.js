@@ -1,75 +1,27 @@
-async function sendWhatsAppNotification(
-    whatsappRecipient,
-    taskTitle,
-    deadline
-) {
-    const PHONE_NUMBER_ID = '1289877754212511';
-    const ACCESS_TOKEN = 'EAAsNG5Sd0LsBSXi6vfMlyVzlWEDYfwxHxqKqNYFumT7Y4tRKZBFGtFiZAuGBTcOsCMnRniZCmcCRHc0ZBiNUVrH13XsPsYCCBNflPEuymOzkPSgQu14DmYUbFUBroqprHXXGZCxADtIegvz50dpAhvGQF5Y5T3BZC0rVWHZB37vw6ExX2xlHSZCHfqvLF5LjoFocKwZDZD';
-
-    if (!ACCESS_TOKEN || ACCESS_TOKEN === 'REPLACE_WITH_YOUR_ACCESS_TOKEN') {
-        console.error("WhatsApp Error: Meta access token is not configured.");
-        showToast("WhatsApp failed: Meta access token is not configured.", "error");
-        return false;
-    }
-
-    if (!whatsappRecipient || String(whatsappRecipient).trim() === '') {
-        console.error("WhatsApp Error: WhatsApp recipient ID is missing!");
-        showToast("WhatsApp not sent: employee has no WhatsApp recipient ID configured.", "error");
-        return false;
-    }
-
-    let cleanPhone = String(whatsappRecipient).replace(/\D/g, '');
-    if (cleanPhone.length === 10) {
-        cleanPhone = '91' + cleanPhone;
-    }
-
-    if (cleanPhone.length < 10) {
-        console.error("WhatsApp Error: Invalid WhatsApp recipient:", whatsappRecipient);
-        showToast("WhatsApp not sent: invalid WhatsApp recipient ID.", "error");
-        return false;
-    }
-
-    const url = `https://graph.facebook.com/v17.0/${PHONE_NUMBER_ID}/messages`;
-    const data = {
-        messaging_product: "whatsapp",
-        to: cleanPhone,
-        type: "text",
-        text: {
-            body:
-                `📢 Irrigation Division Bareilly\n\n` +
-                `New Task Assigned:\n` +
-                `📋 Task: ${taskTitle}\n` +
-                `⏰ Deadline: ${deadline}\n\n` +
-                `Please check your dashboard.`
-        }
-    };
-
+async function sendWhatsAppNotification(whatsappRecipient, taskTitle, deadline, taskId, publicToken) {
     try {
-        const response = await fetch(url, {
+        const response = await apiRequest('/api/whatsapp', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                action: 'assignment',
+                recipient: whatsappRecipient,
+                taskTitle,
+                deadline,
+                taskId,
+                publicToken
+            })
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
-            console.log("WhatsApp message sent successfully:", result);
-            showToast("WhatsApp notification delivered to employee.", "success");
-            return true;
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.message || 'WhatsApp API request failed');
         }
 
-        console.error("Failed to send WhatsApp:", result);
-        const errMsg = result?.error?.message || "Unknown error from WhatsApp API";
-        showToast(`WhatsApp failed: ${errMsg}`, "error");
-        return false;
-
+        showToast("Task assigned. WhatsApp notification sent.", "success");
+        return true;
     } catch (error) {
-        console.error("Error connecting to WhatsApp API:", error);
-        showToast("WhatsApp API connection error. Check console / network.", "error");
+        console.error("WhatsApp notification error:", error);
+        showToast("Task assigned, but WhatsApp notification failed.", "error");
         return false;
     }
 }
@@ -119,6 +71,8 @@ let currentUser = null;
 // Do not hardcode employee/user information in this file.
 let employees = [];
 let employeesLoaded = false;
+let tasks = [];
+let tasksLoaded = false;
 
 // ================= EMPLOYEE DATA =================
 async function loadEmployees() {
@@ -129,7 +83,7 @@ async function loadEmployees() {
     }
 
     try {
-        const response = await fetch('./employees.json', { cache: 'no-store' });
+        const response = await apiRequest('/api/employees');
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -153,8 +107,24 @@ async function loadEmployees() {
 }
 
 // ================= ASSIGNED TASK STATE =================
-// Dynamically assigned tasks are runtime data and remain in localStorage.
-let tasks = JSON.parse(localStorage.getItem('irr_tasks')) || [];
+// Assigned tasks are persisted server-side through the Vercel API.
+async function loadAssignedTasks() {
+    if (tasksLoaded) return tasks;
+
+    try {
+        const response = await apiRequest('/api/tasks');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        tasks = Array.isArray(data) ? data : (data?.tasks || []);
+        tasksLoaded = true;
+    } catch (error) {
+        console.error('Unable to load assigned tasks:', error);
+        tasks = [];
+    }
+
+    return tasks;
+}
 
 // ================= MASTER TASK STATE =================
 // Master task definitions are maintained in tasks.json.
@@ -204,6 +174,18 @@ let officePieInstance = null;
 let officeBarInstance = null;
 
 // ================= GOOGLE SIGN-IN AUTHENTICATION =================
+async function apiRequest(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    headers.set('Content-Type', 'application/json');
+
+    const credential = sessionStorage.getItem('irr_google_credential');
+    if (credential) {
+        headers.set('Authorization', `Bearer ${credential}`);
+    }
+
+    return fetch(url, { ...options, headers });
+}
+
 function parseJwt(token) {
     try {
         const base64Url = token.split('.')[1];
@@ -312,6 +294,11 @@ async function handleGoogleSignIn(response) {
         JSON.stringify(currentUser)
     );
 
+    sessionStorage.setItem(
+        'irr_google_credential',
+        response.credential
+    );
+
     localStorage.setItem(
         'irr_current_user',
         JSON.stringify(currentUser)
@@ -330,6 +317,7 @@ async function handleGoogleSignIn(response) {
 function logout() {
     currentUser = null;
     sessionStorage.removeItem('irr_logged_user');
+    sessionStorage.removeItem('irr_google_credential');
     localStorage.removeItem('irr_current_user');
 
     if (window.google && google.accounts && google.accounts.id) {
@@ -347,7 +335,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([
         loadEmployees(),
         loadWhatsAppUsers(),
-        loadMasterSchedule()
+        loadMasterSchedule(),
+        loadAssignedTasks()
     ]);
 
     const savedUser =
@@ -404,9 +393,8 @@ function initDashboard() {
 
 // ================= UTILS & STORAGE =================
 function saveData() {
-    // Employee master data is maintained in employees.json.
-    // Do not save employee records to localStorage.
-    localStorage.setItem('irr_tasks', JSON.stringify(tasks));
+    // Tasks and employee master data are persisted by the Vercel API.
+    // Keep chat locally for now.
     localStorage.setItem('irr_chat', JSON.stringify(chatMessages));
 }
 
@@ -544,7 +532,7 @@ function closeFullImageView() {
 }
 
 // ================= EMPLOYEE DIRECTORY =================
-function handleAddEmployee(e) {
+async function handleAddEmployee(e) {
     e.preventDefault();
 
     const name = document.getElementById('newEmpName').value.trim();
@@ -552,22 +540,32 @@ function handleAddEmployee(e) {
     const email = document.getElementById('newEmpEmail').value.trim();
     const phone = document.getElementById('newEmpPhone').value.trim();
 
-    if (employees.some(emp => emp.email.toLowerCase() === email.toLowerCase())) {
-        showToast("Employee with this email already exists!", "error");
+    if (!name || !post || !email || !phone) {
+        showToast("Please fill all employee fields.", "error");
         return;
     }
 
-    const newId = employees.length > 0
-        ? Math.max(...employees.map(emp => emp.id || 0)) + 1
-        : 1;
+    try {
+        const response = await apiRequest('/api/employees', {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'create',
+                employee: { name, post, email, phone, avatar: "" }
+            })
+        });
 
-    employees.push({ id: newId, name, post, email, phone, avatar: "" });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to add employee.');
 
-    saveData();
-    renderEmployees();
-    document.getElementById('addEmployeeForm').reset();
-    showToast("New staff member added for the current session.", "success");
-    renderAnalyticsCharts();
+        employees = result.employees || employees;
+        renderEmployees();
+        document.getElementById('addEmployeeForm').reset();
+        showToast("Employee added successfully.", "success");
+        renderAnalyticsCharts();
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to add employee.", "error");
+    }
 }
 
 function renderEmployees() {
@@ -597,8 +595,9 @@ function renderEmployees() {
             </div>
             <div class="flex items-center gap-1.5 shrink-0">
                 <a href="tel:${emp.phone}" class="bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white text-xs px-2.5 py-1.5 rounded-lg transition border border-purple-500/30 flex items-center gap-1 shadow" title="Call ${emp.phone}">
-                    📞 Call
+                    📞
                 </a>
+                <button onclick="editEmployee(${emp.id})" class="text-blue-700 hover:bg-blue-100 p-2 rounded-lg text-xs transition" title="Edit Staff">✏️</button>
                 <button onclick="deleteEmployee(${emp.id})" class="text-red-400 hover:bg-red-500/20 p-2 rounded-lg text-xs transition" title="Delete Staff">🗑️</button>
             </div>
         `;
@@ -608,12 +607,65 @@ function renderEmployees() {
     populateEmployeeOptions();
 }
 
-function deleteEmployee(id) {
-    employees = employees.filter(emp => emp.id !== id);
-    saveData();
-    renderEmployees();
-    showToast("Staff member removed.", "info");
-    renderAnalyticsCharts();
+async function editEmployee(id) {
+    const employee = employees.find(emp => Number(emp.id) === Number(id));
+    if (!employee) return;
+
+    const name = prompt("Employee name:", employee.name);
+    if (name === null) return;
+    const post = prompt("Post/designation:", employee.post);
+    if (post === null) return;
+    const email = prompt("Email ID:", employee.email);
+    if (email === null) return;
+    const phone = prompt("Phone number:", employee.phone || "");
+    if (phone === null) return;
+
+    try {
+        const response = await apiRequest('/api/employees', {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'update',
+                employee: {
+                    ...employee,
+                    name: name.trim(),
+                    post: post.trim(),
+                    email: email.trim(),
+                    phone: phone.trim()
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to update employee.');
+
+        employees = result.employees || employees;
+        renderEmployees();
+        populateEmployeeOptions();
+        showToast("Employee information updated.", "success");
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to update employee.", "error");
+    }
+}
+
+async function deleteEmployee(id) {
+    if (!confirm("Delete this employee?")) return;
+
+    try {
+        const response = await apiRequest(`/api/employees?id=${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to delete employee.');
+
+        employees = result.employees || [];
+        renderEmployees();
+        showToast("Staff member removed.", "info");
+        renderAnalyticsCharts();
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to remove employee.", "error");
+    }
 }
 
 function populateEmployeeOptions() {
@@ -659,64 +711,43 @@ async function handleAssignTask(e) {
     }
 
     const foundEmp = employees.find(
-        emp =>
-            emp.name &&
-            emp.name.trim().toLowerCase() === assignee.toLowerCase()
+        emp => emp.name && emp.name.trim().toLowerCase() === assignee.toLowerCase()
     );
 
     if (!foundEmp) {
-        showToast(
-            `No matching employee found for "${assignee}". Check spelling or pick from the list.`,
-            "error"
-        );
+        showToast(`No matching employee found for "${assignee}".`, "error");
         return;
     }
 
-    const newTask = {
-        id: Date.now(),
-        assignee,
-        deadline,
-        desc,
-        m80: false,
-        m50: false,
-        m10: false,
-        status: "Pending",
-        done: false,
-        notifiedDone: false,
-        notifiedMissed: false
-    };
+    try {
+        const response = await apiRequest('/api/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                assigneeId: foundEmp.id,
+                assignee: foundEmp.name,
+                deadline,
+                desc
+            })
+        });
 
-    tasks.push(newTask);
-    saveData();
-    renderTasks();
-    renderAccountTab();
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to assign task.');
 
-    const taskForm = document.getElementById('taskForm');
-    if (taskForm) taskForm.reset();
+        tasks = result.tasks || tasks;
+        renderTasks();
+        renderAccountTab();
 
-    if (foundEmp) {
-        await loadWhatsAppUsers();
+        const taskForm = document.getElementById('taskForm');
+        if (taskForm) taskForm.reset();
 
-        const whatsappRecipient =
-            getWhatsAppRecipient(foundEmp.id);
-
-        if (whatsappRecipient) {
-            showToast(
-                "Task assigned. Sending WhatsApp notification...",
-                "info"
-            );
-
-            await sendWhatsAppNotification(
-                whatsappRecipient,
-                desc,
-                deadline
-            );
+        if (result.whatsappSent === false) {
+            showToast("Task assigned, but WhatsApp notification was not sent.", "warning");
         } else {
-            showToast(
-                "Task assigned, but no WhatsApp recipient ID is configured for this employee.",
-                "warning"
-            );
+            showToast("Task assigned and WhatsApp notification sent.", "success");
         }
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to assign task.", "error");
     }
 }
 
@@ -837,22 +868,31 @@ function toggleMilestone(id, milestoneKey) {
     }
 }
 
-function markTaskDone(id) {
+async function markTaskDone(id) {
     const task = tasks.find(t => t.id === id);
     if (!task || task.done) return;
 
-    task.done = true;
-    task.status = "Completed";
+    try {
+        const response = await apiRequest(`/api/tasks?id=${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                action: 'complete',
+                token: task.publicToken || ''
+            })
+        });
 
-    if (!task.notifiedDone) {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to complete task.');
+
+        tasks = result.tasks || tasks.map(t => t.id === id ? { ...t, done: true, status: 'Completed' } : t);
         showToast(`🎉 Task completed by ${task.assignee}!`, "success");
-        task.notifiedDone = true;
+        renderTasks();
+        renderAccountTab();
+        renderAnalyticsCharts();
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to complete task.", "error");
     }
-
-    saveData();
-    renderTasks();
-    renderAccountTab();
-    renderAnalyticsCharts();
 }
 
 function checkOverdueNotifications() {
@@ -878,13 +918,21 @@ function checkOverdueNotifications() {
     if (changed) saveData();
 }
 
-function clearAllTasks() {
-    if (confirm("Are you sure you want to clear all tasks?")) {
+async function clearAllTasks() {
+    if (!confirm("Are you sure you want to clear all tasks?")) return;
+
+    try {
+        const response = await apiRequest('/api/tasks?all=true', { method: 'DELETE' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to clear tasks.');
+
         tasks = [];
-        saveData();
         renderTasks();
         renderAccountTab();
         showToast("All tasks cleared.", "info");
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to clear tasks.", "error");
     }
 }
 
@@ -1371,244 +1419,7 @@ function renderAnalyticsCharts() {
     }, 50);
 }
 
-// ================= AUTOMATIC WHATSAPP REMINDERS =================
-const REMINDER_PHONE_NUMBER_ID = '1289877754212511';
-const REMINDER_ACCESS_TOKEN = 'REPLACE_WITH_YOUR_ACCESS_TOKEN';
-
-let reminderLog =
-    JSON.parse(
-        localStorage.getItem('irr_reminder_log')
-    ) || {};
-
-function saveReminderLog() {
-    localStorage.setItem(
-        'irr_reminder_log',
-        JSON.stringify(reminderLog)
-    );
-}
-
-function cleanWhatsAppPhone(phone) {
-    let clean = String(phone).replace(/\D/g, '');
-
-    if (clean.length === 10) {
-        clean = '91' + clean;
-    }
-
-    return clean;
-}
-
-async function sendWhatsAppReminderMessage(
-    whatsappRecipient,
-    message
-) {
-    if (
-        !whatsappRecipient ||
-        String(whatsappRecipient).trim() === ''
-    ) {
-        console.error(
-            "Reminder WhatsApp Error: recipient ID missing."
-        );
-        return false;
-    }
-
-    const cleanPhone =
-        cleanWhatsAppPhone(whatsappRecipient);
-
-    if (cleanPhone.length < 10) {
-        console.error(
-            "Reminder WhatsApp Error: invalid recipient:",
-            whatsappRecipient
-        );
-        return false;
-    }
-
-    const url =
-        `https://graph.facebook.com/v17.0/${REMINDER_PHONE_NUMBER_ID}/messages`;
-
-    const data = {
-        messaging_product: "whatsapp",
-        to: cleanPhone,
-        type: "text",
-        text: {
-            body: message
-        }
-    };
-
-    try {
-        const response = await fetch(
-            url,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization':
-                        `Bearer ${REMINDER_ACCESS_TOKEN}`,
-                    'Content-Type':
-                        'application/json'
-                },
-                body: JSON.stringify(data)
-            }
-        );
-
-        const result = await response.json();
-
-        if (response.ok) {
-            console.log(
-                "Reminder sent:",
-                result
-            );
-            return true;
-        }
-
-        console.error(
-            "Reminder failed:",
-            result
-        );
-
-        const errMsg =
-            result?.error?.message ||
-            "Unknown WhatsApp API error";
-
-        showToast(
-            `Reminder not sent: ${errMsg}`,
-            "error"
-        );
-
-        return false;
-
-    } catch (err) {
-        console.error(
-            "Reminder network error:",
-            err
-        );
-
-        showToast(
-            "Reminder failed: network/API error. Check console.",
-            "error"
-        );
-
-        return false;
-    }
-}
-
-async function runAutomaticWhatsAppReminders() {
-    if (
-        typeof tasks === 'undefined' ||
-        !Array.isArray(tasks) ||
-        typeof employees === 'undefined'
-    ) {
-        return;
-    }
-
-    await loadWhatsAppUsers();
-
-    const todayKey =
-        new Date().toISOString().slice(0, 10);
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (const task of tasks) {
-        if (!task || !task.desc || task.done) {
-            continue;
-        }
-
-        const emp = employees.find(
-            e =>
-                e.name &&
-                task.assignee &&
-                e.name.trim().toLowerCase() ===
-                    task.assignee.trim().toLowerCase()
-        );
-
-        if (!emp) {
-            continue;
-        }
-
-        const whatsappRecipient =
-            getWhatsAppRecipient(emp.id);
-
-        if (!whatsappRecipient) {
-            continue;
-        }
-
-        const deadlineDate =
-            new Date(task.deadline);
-
-        if (isNaN(deadlineDate.getTime())) {
-            continue;
-        }
-
-        deadlineDate.setHours(0, 0, 0, 0);
-
-        const diffDays = Math.round(
-            (deadlineDate - today) /
-                (1000 * 60 * 60 * 24)
-        );
-
-        if (diffDays === 1) {
-            const key =
-                `upcoming_${task.id}`;
-
-            if (!reminderLog[key]) {
-                const msg =
-                    `⏰ Reminder - Irrigation Division Bareilly\n\n` +
-                    `Hi ${task.assignee}, your task "${task.desc}" ` +
-                    `is due TOMORROW (${task.deadline}). ` +
-                    `Please complete it and update your dashboard.`;
-
-                const sent =
-                    await sendWhatsAppReminderMessage(
-                        whatsappRecipient,
-                        msg
-                    );
-
-                if (sent) {
-                    reminderLog[key] = true;
-                    saveReminderLog();
-                }
-            }
-        }
-
-        if (diffDays < 0) {
-            const key =
-                `overdue_${task.id}_${todayKey}`;
-
-            if (!reminderLog[key]) {
-                const msg =
-                    `⚠️ Reminder - Irrigation Division Bareilly\n\n` +
-                    `Hi ${task.assignee}, your task "${task.desc}" ` +
-                    `was due on ${task.deadline} and is still incomplete. ` +
-                    `Please complete it as soon as possible.`;
-
-                const sent =
-                    await sendWhatsAppReminderMessage(
-                        whatsappRecipient,
-                        msg
-                    );
-
-                if (sent) {
-                    reminderLog[key] = true;
-                    saveReminderLog();
-                }
-            }
-        }
-    }
-}
-
-function startAutomaticReminderEngine() {
-    runAutomaticWhatsAppReminders();
-    setInterval(
-        runAutomaticWhatsAppReminders,
-        6 * 60 * 60 * 1000
-    );
-}
-
-document.addEventListener(
-    'DOMContentLoaded',
-    () => {
-        setTimeout(
-            startAutomaticReminderEngine,
-            4000
-        );
-    }
-);
+// ================= SERVER-SIDE WHATSAPP REMINDERS =================
+// Reminder delivery is handled by /api/reminders through Vercel Cron.
+// Keeping credentials and scheduled delivery off the browser prevents token exposure
+// and allows reminders to run even when nobody has the dashboard open.
