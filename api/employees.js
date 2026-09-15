@@ -2,6 +2,35 @@ const { authenticate, sendAuthError } = require('./_auth');
 const { getJsonFile, putJsonFile } = require('./_github');
 
 const PATH = 'employees.json';
+const WA_PATH = 'whatsapp-users.json';
+
+function cleanPhone(phone) {
+  let value = String(phone || '').replace(/\D/g, '');
+  if (value.length === 10) value = '91' + value;
+  return value;
+}
+
+async function syncWhatsAppUser(employee, remove = false) {
+  const waFile = await getJsonFile(WA_PATH);
+  const users = { ...(waFile.data?.users || {}) };
+  const key = String(employee.id);
+
+  if (remove) {
+    delete users[key];
+  } else {
+    const phone = cleanPhone(employee.phone);
+    if (phone) {
+      users[key] = { whatsappUserId: phone };
+    }
+  }
+
+  await putJsonFile(
+    WA_PATH,
+    { version: 1, users },
+    waFile.sha,
+    `${remove ? 'Remove' : 'Sync'} WhatsApp employee #${employee.id}`
+  );
+}
 
 module.exports = async function handler(req, res) {
   try {
@@ -54,6 +83,17 @@ module.exports = async function handler(req, res) {
         `Update employee information via portal`
       );
 
+      const savedEmployee = updated.find(e =>
+        Number(e.id) === Number(employee.id) ||
+        (
+          body.action !== 'update' &&
+          String(e.email).toLowerCase() === String(employee.email).toLowerCase()
+        )
+      );
+      if (savedEmployee) {
+        await syncWhatsAppUser(savedEmployee);
+      }
+
       return res.status(200).json({ employees: updated });
     }
 
@@ -71,6 +111,11 @@ module.exports = async function handler(req, res) {
         current.sha,
         `Delete employee via portal`
       );
+
+      const removedEmployee = employees.find(e => Number(e.id) === id);
+      if (removedEmployee) {
+        await syncWhatsAppUser(removedEmployee, true);
+      }
 
       return res.status(200).json({ employees: updated });
     }
