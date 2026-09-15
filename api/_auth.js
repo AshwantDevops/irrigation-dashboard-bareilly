@@ -1,6 +1,6 @@
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
-  '592948920401-d5lrh1j5q76g6huld6h1nmuvp21p90v.apps.googleusercontent.com';
+  '592948920401-cfci8r4fea840h2o3spgbkimvf9ifgbg.apps.googleusercontent.com';
 
 async function authenticate(req) {
   const auth = req.headers.authorization || '';
