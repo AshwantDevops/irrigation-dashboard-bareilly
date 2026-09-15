@@ -331,14 +331,7 @@ function logout() {
 
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', async () => {
-    // Load external configuration/data before using employees or masterSchedule.
-    await Promise.all([
-        loadEmployees(),
-        loadWhatsAppUsers(),
-        loadMasterSchedule(),
-        loadAssignedTasks()
-    ]);
-
+    // Restore the authenticated session before calling protected APIs.
     const savedUser =
         sessionStorage.getItem('irr_logged_user') ||
         localStorage.getItem('irr_current_user');
@@ -361,19 +354,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindEvent('chatForm', 'submit', handleSendMessage);
     bindEvent('addMasterScheduleForm', 'submit', handleAddMasterSchedule);
 
-    // A valid Google-authenticated session is sufficient.
-    // The employee master list is not an authentication allow-list.
     const stillValid =
         !!currentUser &&
-        !!currentUser.email;
+        !!currentUser.email &&
+        !!sessionStorage.getItem('irr_google_credential');
 
     if (stillValid) {
+        await Promise.all([
+            loadEmployees(),
+            loadWhatsAppUsers(),
+            loadMasterSchedule(),
+            loadAssignedTasks()
+        ]);
+
         hideAuthModal();
         initDashboard();
     } else {
         currentUser = null;
         sessionStorage.removeItem('irr_logged_user');
+        sessionStorage.removeItem('irr_google_credential');
         localStorage.removeItem('irr_current_user');
+        await Promise.all([
+            loadWhatsAppUsers(),
+            loadMasterSchedule()
+        ]);
         showAuthModal();
     }
 });
@@ -792,7 +796,7 @@ function renderTasks() {
     tbody.innerHTML = '';
 
     if (typeof tasks === 'undefined' || tasks.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-xs text-slate-500">No active work assignments found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-xs text-slate-500">No active work assignments found.</td></tr>`;
         return;
     }
 
@@ -814,6 +818,11 @@ function renderTasks() {
             <td class="p-3 font-medium text-slate-200 text-xs">${task.assignee}</td>
             <td class="p-3 text-slate-300 text-xs max-w-xs truncate">${task.desc}</td>
             <td class="p-3 text-slate-400 text-xs">${task.deadline}</td>
+            <td class="p-3 text-xs">
+                ${task.publicToken
+                    ? `<a href="task.html?id=${encodeURIComponent(task.id)}&token=${encodeURIComponent(task.publicToken)}" target="_blank" class="text-blue-600 hover:text-blue-800 underline font-bold">Open Task</a>`
+                    : '<span class="text-slate-400">N/A</span>'}
+            </td>
             <td class="p-3 text-center">
                 <input type="checkbox" ${task.m80 ? 'checked' : ''}
                     onchange="toggleMilestone(${task.id}, 'm80')"
