@@ -151,9 +151,10 @@
     {
       "id": 22,
       "name": "Ashwant Dhaka",
-      "post": "tester",
-      "phone": "",
-      "email": "ashwindhaka@gmail.com"
+      "post": "Admin",
+      "phone": "9584001010",
+      "email": "ashwindhaka@gmail.com",
+      "avatar": "https://lh3.googleusercontent.com/a/ACg8ocJ9hW-L2cae27QbxGanJPotZjIsyIbsVBiaOfYXdyLLa73qT8ppig=s96-c"
     }
   ]
 }
