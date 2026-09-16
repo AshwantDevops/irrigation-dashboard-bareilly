@@ -2,6 +2,17 @@ const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID ||
   '592948920401-cfci8r4fea840h2o3spgbkimvf9ifgbg.apps.googleusercontent.com';
 
+function getAdminEmails() {
+  return String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isAdminEmail(email) {
+  return getAdminEmails().includes(String(email || '').trim().toLowerCase());
+}
+
 async function authenticate(req) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
@@ -36,10 +47,13 @@ async function authenticate(req) {
     throw error;
   }
 
+  const email = String(payload.email || '').toLowerCase();
+
   return {
-    email: String(payload.email || '').toLowerCase(),
+    email,
     name: payload.name || payload.email || 'User',
-    sub: payload.sub
+    sub: payload.sub,
+    isAdmin: isAdminEmail(email)
   };
 }
 
@@ -49,4 +63,9 @@ function sendAuthError(res, error) {
   });
 }
 
-module.exports = { authenticate, sendAuthError, GOOGLE_CLIENT_ID };
+module.exports = {
+  authenticate,
+  sendAuthError,
+  GOOGLE_CLIENT_ID,
+  isAdminEmail
+};
