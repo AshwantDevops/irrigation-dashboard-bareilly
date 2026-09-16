@@ -1,7 +1,7 @@
 // Main script
 
 const WHATSAPP_PHONE_NUMBER_ID = "1288119947723289";
-const WHATSAPP_API_VERSION = "v17.0";
+const WHATSAPP_API_VERSION = "v26.0";
 const WHATSAPP_ACCESS_TOKEN = "EAAXLCtl2jx0BSZAqcKPYpGXc9ydqZAy5GQncPSAor9QjF40RoZAVYNxNtuGhXGGcECXD2P5NPa8KYHtSCh4lk2XFfquMZB3I3oB0EgbEFZCZBqX23UZCxaypxAOE0x18PFHF7k75fCNwQhvsB6rSZCTMXdx1IRb8dM0t6rmXTjHTyYz63UUZAIrYiSaB5I8HfnAZDZD";
 
 async function sendWhatsAppNotification(whatsappRecipient, taskTitle, deadline, taskId, publicToken) {
@@ -876,7 +876,11 @@ async function handleAssignTask(e) {
         }
 
         if (result.whatsappSent === false) {
-            showToast("Task assigned, but WhatsApp notification was not sent.", "warning");
+            const reason = result.whatsappError
+                ? ` WhatsApp: ${result.whatsappError}`
+                : '';
+            showToast(`Task assigned, but WhatsApp notification was not sent.${reason}`, "error");
+            console.error("WhatsApp notification failed:", result.whatsappError || "Unknown error");
         } else {
             showToast("Task assigned and WhatsApp notification sent.", "success");
         }
