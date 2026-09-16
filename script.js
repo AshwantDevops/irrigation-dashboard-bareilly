@@ -399,6 +399,12 @@ function initDashboard() {
     renderChat();
     renderMasterSchedule();
     renderAccountTab();
+
+    // Auto-populate the logged-in employee in the task assignment form.
+    const taskAssignee = document.getElementById('taskAssignee');
+    if (taskAssignee && currentUser?.name) {
+        taskAssignee.value = currentUser.name;
+    }
 }
 
 // ================= UTILS & STORAGE =================
