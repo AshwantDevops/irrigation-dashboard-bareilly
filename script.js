@@ -77,6 +77,7 @@ let currentUser = null;
 // Do not hardcode employee/user information in this file.
 let employees = [];
 let employeesLoaded = false;
+let canManageEmployees = false;
 let tasks = [];
 let tasksLoaded = false;
 
@@ -101,6 +102,7 @@ async function loadEmployees() {
             ? data
             : (data?.employees || []);
 
+        canManageEmployees = !!data?.canManageEmployees;
         employeesLoaded = true;
         console.log(`Loaded ${employees.length} employees from employees.json`);
 
@@ -121,6 +123,8 @@ async function loadEmployees() {
                 ? fallbackData
                 : (fallbackData?.employees || []);
 
+            // The static fallback is read-only and never grants admin rights.
+            canManageEmployees = false;
             employeesLoaded = true;
             console.log(`Loaded ${employees.length} employees from employees.json fallback`);
         } catch (fallbackError) {
@@ -572,6 +576,11 @@ function closeFullImageView() {
 async function handleAddEmployee(e) {
     e.preventDefault();
 
+    if (!canManageEmployees) {
+        showToast("Administrator access is required to add employees.", "error");
+        return;
+    }
+
     const name = document.getElementById('newEmpName').value.trim();
     const post = document.getElementById('newEmpPost').value.trim();
     const email = document.getElementById('newEmpEmail').value.trim();
@@ -634,8 +643,8 @@ function renderEmployees() {
                 <a href="tel:${emp.phone}" class="bg-purple-600/30 hover:bg-purple-600 text-purple-200 hover:text-white text-xs px-2.5 py-1.5 rounded-lg transition border border-purple-500/30 flex items-center gap-1 shadow" title="Call ${emp.phone}">
                     📞
                 </a>
-                <button onclick="editEmployee(${emp.id})" class="text-blue-700 hover:bg-blue-100 p-2 rounded-lg text-xs transition" title="Edit Staff">✏️</button>
-                <button onclick="deleteEmployee(${emp.id})" class="text-red-400 hover:bg-red-500/20 p-2 rounded-lg text-xs transition" title="Delete Staff">🗑️</button>
+                ${canManageEmployees ? `<button onclick="editEmployee(${emp.id})" class="text-blue-700 hover:bg-blue-100 p-2 rounded-lg text-xs transition" title="Edit Staff">✏️</button>` : ''}
+                ${canManageEmployees ? `<button onclick="deleteEmployee(${emp.id})" class="text-red-400 hover:bg-red-500/20 p-2 rounded-lg text-xs transition" title="Delete Staff">🗑️</button>` : ''}
             </div>
         `;
         list.appendChild(div);
@@ -646,6 +655,11 @@ function renderEmployees() {
 }
 
 async function editEmployee(id) {
+    if (!canManageEmployees) {
+        showToast("Administrator access is required to edit employee information.", "error");
+        return;
+    }
+
     const employee = employees.find(emp => Number(emp.id) === Number(id));
     if (!employee) return;
 
@@ -687,6 +701,11 @@ async function editEmployee(id) {
 }
 
 async function deleteEmployee(id) {
+    if (!canManageEmployees) {
+        showToast("Administrator access is required to delete employees.", "error");
+        return;
+    }
+
     if (!confirm("Delete this employee?")) return;
 
     try {
@@ -750,8 +769,8 @@ function renderEmployeeDirectoryTab() {
             <td class="px-4 py-3.5">
                 <div class="flex items-center justify-center gap-2">
                     ${emp.phone ? `<a href="tel:${emp.phone}" class="px-3 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-600 hover:text-white transition" title="Call ${emp.phone}">📞</a>` : ''}
-                    <button onclick="editEmployee(${emp.id})" class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition" title="Edit Staff">✏️</button>
-                    <button onclick="deleteEmployee(${emp.id})" class="px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete Staff">🗑️</button>
+                    ${canManageEmployees ? `<button onclick="editEmployee(${emp.id})" class="px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition" title="Edit Staff">✏️</button>` : ''}
+                    ${canManageEmployees ? `<button onclick="deleteEmployee(${emp.id})" class="px-3 py-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete Staff">🗑️</button>` : ''}
                 </div>
             </td>
         </tr>
