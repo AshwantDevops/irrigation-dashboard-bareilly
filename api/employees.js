@@ -34,7 +34,7 @@ async function syncWhatsAppUser(employee, remove = false) {
 
 module.exports = async function handler(req, res) {
   try {
-    await authenticate(req);
+    const auth = await authenticate(req);
 
     const current = await getJsonFile(PATH);
     const employees = Array.isArray(current.data)
@@ -42,10 +42,18 @@ module.exports = async function handler(req, res) {
       : (current.data?.employees || []);
 
     if (req.method === 'GET') {
-      return res.status(200).json({ employees });
+      return res.status(200).json({
+        employees,
+        canManageEmployees: !!auth.isAdmin
+      });
     }
 
     if (req.method === 'POST') {
+      if (!auth.isAdmin) {
+        return res.status(403).json({
+          message: 'Administrator access is required to modify employee information.'
+        });
+      }
       const body = req.body || {};
       const employee = body.employee || {};
 
@@ -98,6 +106,12 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      if (!auth.isAdmin) {
+        return res.status(403).json({
+          message: 'Administrator access is required to modify employee information.'
+        });
+      }
+
       const id = Number(req.query.id);
       const updated = employees.filter(e => Number(e.id) !== id);
 
