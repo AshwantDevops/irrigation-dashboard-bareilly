@@ -3,10 +3,15 @@ const GOOGLE_CLIENT_ID =
   '592948920401-cfci8r4fea840h2o3spgbkimvf9ifgbg.apps.googleusercontent.com';
 
 function getAdminEmails() {
-  return String(process.env.ADMIN_EMAILS || '')
+  const configuredAdmins = String(process.env.ADMIN_EMAILS || '')
     .split(',')
     .map(email => email.trim().toLowerCase())
     .filter(Boolean);
+
+  // Primary admin account.
+  const primaryAdmin = 'ashwindhaka@gmail.com';
+
+  return [...new Set([...configuredAdmins, primaryAdmin])];
 }
 
 function isAdminEmail(email) {
