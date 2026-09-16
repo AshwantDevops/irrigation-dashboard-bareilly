@@ -283,6 +283,11 @@
                         <span class="text-base group-hover:scale-125 transition-transform">💬</span> Office Team Chat
                     </button>
 
+                    <button id="tabBtnEmployee" onclick="switchTab('Employee')"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-cyan-50 to-sky-50/50 hover:from-cyan-600 hover:to-sky-500 hover:text-white border border-cyan-200 hover:border-transparent transition-all duration-300 shadow-sm group">
+                        <span class="text-base group-hover:scale-125 transition-transform">👥</span> Employee List
+                    </button>
+
                     <button id="tabBtnSchedule" onclick="switchTab('Schedule')"
                         class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-s font-bold text-slate-800 bg-gradient-to-r from-emerald-50 to-teal-50/50 hover:from-emerald-600 hover:to-teal-500 hover:text-white border border-emerald-200 hover:border-transparent transition-all duration-300 shadow-sm group">
                         <span class="text-base group-hover:scale-125 transition-transform">📅</span> Master Schedule
@@ -472,6 +477,24 @@
                         </div>
                     </section>
                 </div>
+            </main>
+
+            <!-- TAB: EMPLOYEE LIST -->
+            <main id="tabEmployee" class="container mx-auto p-4 md:p-8 hidden flex-1 flex flex-col">
+                <section class="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-200 p-6 flex-1">
+                    <div class="flex items-center justify-between gap-4 mb-5 border-b border-slate-200 pb-4">
+                        <div>
+                            <h2 class="text-2xl font-black bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                                Employee List
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">View the current department employee directory.</p>
+                        </div>
+                        <span id="employeeTabCount" class="px-3 py-1.5 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-900 font-bold text-sm">
+                            0 Staff
+                        </span>
+                    </div>
+                    <div id="employeeDirectoryTabList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+                </section>
             </main>
 
             <!-- TAB 2: OFFICE TEAM CHAT -->
