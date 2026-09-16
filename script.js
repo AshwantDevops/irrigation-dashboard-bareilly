@@ -106,8 +106,28 @@ async function loadEmployees() {
 
         return employees;
     } catch (error) {
-        console.error('Unable to load employees.json:', error);
-        employees = [];
+        console.error('Unable to load employees from API:', error);
+
+        // Fallback to the read-only employee master file so the
+        // directory and task assignment still work if the API is unavailable.
+        try {
+            const fallbackResponse = await fetch('./employees.json', { cache: 'no-store' });
+            if (!fallbackResponse.ok) {
+                throw new Error(`HTTP ${fallbackResponse.status}`);
+            }
+
+            const fallbackData = await fallbackResponse.json();
+            employees = Array.isArray(fallbackData)
+                ? fallbackData
+                : (fallbackData?.employees || []);
+
+            employeesLoaded = true;
+            console.log(`Loaded ${employees.length} employees from employees.json fallback`);
+        } catch (fallbackError) {
+            console.error('Unable to load employees.json fallback:', fallbackError);
+            employees = [];
+        }
+
         return employees;
     }
 }
@@ -726,9 +746,21 @@ async function handleAssignTask(e) {
         return;
     }
 
-    const foundEmp = employees.find(
+    let foundEmp = employees.find(
         emp => emp.name && emp.name.trim().toLowerCase() === assignee.toLowerCase()
     );
+
+    // If the employee API is temporarily unavailable, allow the
+    // authenticated employee to assign a task using the identity from
+    // the current Google session.
+    if (
+        !foundEmp &&
+        currentUser?.id &&
+        currentUser?.name &&
+        currentUser.name.trim().toLowerCase() === assignee.toLowerCase()
+    ) {
+        foundEmp = currentUser;
+    }
 
     if (!foundEmp) {
         showToast(`No matching employee found for "${assignee}".`, "error");
@@ -754,7 +786,15 @@ async function handleAssignTask(e) {
         renderAccountTab();
 
         const taskForm = document.getElementById('taskForm');
-        if (taskForm) taskForm.reset();
+        if (taskForm) {
+            taskForm.reset();
+
+            // Keep the logged-in employee selected for the next assignment.
+            const assigneeField = document.getElementById('taskAssignee');
+            if (assigneeField && currentUser?.name) {
+                assigneeField.value = currentUser.name;
+            }
+        }
 
         if (result.whatsappSent === false) {
             showToast("Task assigned, but WhatsApp notification was not sent.", "warning");
