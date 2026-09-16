@@ -266,14 +266,20 @@ function hideAuthModal() {
 async function handleGoogleSignIn(response) {
     hideLoginError();
 
-    // Ensure the latest employee master data is loaded before
-    // validating the Google account against employees.json.
-    await loadEmployees();
-
     if (!response || !response.credential) {
         showLoginError("Google Sign-In failed. Please try again.");
         return;
     }
+
+    // Store the Google credential before calling protected APIs.
+    // This allows /api/employees to return the correct admin permission.
+    sessionStorage.setItem(
+        'irr_google_credential',
+        response.credential
+    );
+
+    // Ensure the latest employee master data is loaded after authentication.
+    await loadEmployees();
 
     const payload = parseJwt(response.credential);
     if (!payload || !payload.email) {
