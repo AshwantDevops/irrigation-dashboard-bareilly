@@ -1,4 +1,4 @@
-## Main script
+// Main script
 
 const WHATSAPP_PHONE_NUMBER_ID = "1288119947723289";
 const WHATSAPP_API_VERSION = "v17.0";
