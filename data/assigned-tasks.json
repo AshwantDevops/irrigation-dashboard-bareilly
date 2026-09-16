@@ -1,22 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": 1789463812536,
-      "assigneeId": 6,
-      "assignee": "Mr. Dinesh Kumar",
-      "deadline": "2026-09-17",
-      "desc": "Canal inspection",
-      "publicToken": "4a723b01101b4e3064404e67f3c14c1edd60",
-      "createdBy": "ashwindhaka@gmail.com",
-      "createdAt": "2026-09-15T09:16:52.536Z",
-      "m80": false,
-      "m50": false,
-      "m10": false,
-      "status": "Pending",
-      "done": false,
-      "completedAt": null,
-      "remindersSent": []
-    }
-  ]
+  "tasks": []
 }
