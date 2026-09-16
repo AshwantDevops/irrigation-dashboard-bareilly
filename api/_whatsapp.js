@@ -1,6 +1,6 @@
 // WhatsApp configuration — kept in sync with the values currently used by script.js.
 const PHONE_NUMBER_ID = '1288119947723289';
-const GRAPH_VERSION = 'v17.0';
+const GRAPH_VERSION = 'v26.0';
 const WHATSAPP_ACCESS_TOKEN = 'EAAXLCtl2jx0BSZAqcKPYpGXc9ydqZAy5GQncPSAor9QjF40RoZAVYNxNtuGhXGGcECXD2P5NPa8KYHtSCh4lk2XFfquMZB3I3oB0EgbEFZCZBqX23UZCxaypxAOE0x18PFHF7k75fCNwQhvsB6rSZCTMXdx1IRb8dM0t6rmXTjHTyYz63UUZAIrYiSaB5I8HfnAZDZD';
 
 function cleanPhone(phone) {
@@ -31,9 +31,13 @@ async function sendWhatsAppText(to, body) {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
+        recipient_type: 'individual',
         to: recipient,
         type: 'text',
-        text: { body }
+        text: {
+          preview_url: false,
+          body
+        }
       })
     }
   );
