@@ -642,6 +642,7 @@ function renderEmployees() {
     });
 
     populateEmployeeOptions();
+    renderEmployeeDirectoryTab();
 }
 
 async function editEmployee(id) {
