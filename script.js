@@ -458,7 +458,7 @@ function showToast(message, type = 'success') {
 
 // ================= TAB SWITCHING =================
 function switchTab(tabId) {
-    const tabs = ['dashboard', 'chat', 'Schedule', 'Account', 'analytics'];
+    const tabs = ['dashboard', 'chat', 'Employee', 'Schedule', 'Account', 'analytics'];
     tabs.forEach(t => {
         const el = document.getElementById(`tab${t}`);
         if (el) el.classList.add('hidden');
@@ -472,6 +472,7 @@ function switchTab(tabId) {
     const activeEl = document.getElementById(`tab${tabId}`);
     if (activeEl) {
         activeEl.classList.remove('hidden');
+        if (tabId === 'Employee') renderEmployeeDirectoryTab();
         if (tabId === 'Schedule') renderMasterSchedule();
         if (tabId === 'Account') renderAccountTab();
         if (tabId === 'analytics') setTimeout(() => renderAnalyticsCharts(), 50);
@@ -702,6 +703,51 @@ async function deleteEmployee(id) {
         console.error(error);
         showToast(error.message || "Unable to remove employee.", "error");
     }
+}
+
+function renderEmployeeDirectoryTab() {
+    const list = document.getElementById('employeeDirectoryTabList');
+    const count = document.getElementById('employeeTabCount');
+    if (!list) return;
+
+    list.innerHTML = '';
+
+    if (count) {
+        count.innerText = `${employees.length} Staff`;
+    }
+
+    if (!employees.length) {
+        list.innerHTML = `
+            <div class="col-span-full text-center py-10 text-slate-500">
+                No employee records found.
+            </div>
+        `;
+        return;
+    }
+
+    employees.forEach(emp => {
+        const div = document.createElement('div');
+        div.className = "bg-slate-50 border border-slate-200 p-4 rounded-2xl flex items-center justify-between gap-4 hover:shadow-md hover:border-cyan-300 transition";
+        div.innerHTML = `
+            <div class="flex items-center gap-3 truncate min-w-0">
+                <div class="w-11 h-11 rounded-full bg-cyan-100 border border-cyan-200 flex items-center justify-center text-cyan-800 font-bold shrink-0">
+                    ${(emp.name || '?').charAt(0).toUpperCase()}
+                </div>
+                <div class="min-w-0">
+                    <h4 class="text-base font-bold text-slate-900 truncate">${emp.name || 'Unnamed employee'}</h4>
+                    <p class="text-sm text-cyan-700 font-semibold truncate">${emp.post || '—'}</p>
+                    <p class="text-xs text-slate-500 truncate">📧 ${emp.email || '—'}</p>
+                    <p class="text-xs text-slate-500 truncate">📞 ${emp.phone || '—'}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                ${emp.phone ? `<a href="tel:${emp.phone}" class="px-2.5 py-1.5 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-600 hover:text-white transition" title="Call ${emp.phone}">📞</a>` : ''}
+                <button onclick="editEmployee(${emp.id})" class="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition" title="Edit Staff">✏️</button>
+                <button onclick="deleteEmployee(${emp.id})" class="px-2.5 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition" title="Delete Staff">🗑️</button>
+            </div>
+        `;
+        list.appendChild(div);
+    });
 }
 
 function populateEmployeeOptions() {
