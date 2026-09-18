@@ -783,16 +783,31 @@ function renderEmployeeDirectoryTab() {
 }
 
 function populateEmployeeOptions() {
-    const datalist = document.getElementById('employeeOptions');
-    if (!datalist) return;
+    const select = document.getElementById('taskAssignee');
+    if (!select) return;
 
-    datalist.innerHTML = '';
+    const selectedName = select.value;
+    select.innerHTML = '<option value="">Select employee</option>';
 
     employees.forEach(emp => {
+        if (!emp || !emp.name) return;
+
         const option = document.createElement('option');
         option.value = emp.name;
-        datalist.appendChild(option);
+        option.textContent = emp.name;
+        select.appendChild(option);
     });
+
+    // Keep the currently selected employee after the list is refreshed.
+    if (selectedName && employees.some(
+        emp => emp.name && emp.name.trim().toLowerCase() === selectedName.trim().toLowerCase()
+    )) {
+        select.value = selectedName;
+    } else if (currentUser?.name && employees.some(
+        emp => emp.name && emp.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
+    )) {
+        select.value = currentUser.name;
+    }
 }
 
 function openAddEmployeeModal() {
