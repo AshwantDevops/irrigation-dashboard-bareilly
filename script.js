@@ -816,11 +816,20 @@ async function handleAssignTask(e) {
     if (!assigneeInput || !deadlineInput || !descInput) return;
 
     const assignee = assigneeInput.value.trim();
-    const deadline = deadlineInput.value;
     const desc = descInput.value.trim();
+
+    // Convert the user's local deadline date/time to an ISO timestamp.
+    // The backend stores UTC, while the UI displays the user's local time.
+    const deadlineDate = deadlineInput.valueAsDate;
+    const deadline = deadlineDate ? deadlineDate.toISOString() : '';
 
     if (!assignee || !deadline || !desc) {
         showToast("Please fill all task fields!", "error");
+        return;
+    }
+
+    if (deadlineDate.getTime() <= Date.now()) {
+        showToast("Deadline must be in the future.", "error");
         return;
     }
 
@@ -889,6 +898,21 @@ async function handleAssignTask(e) {
     }
 }
 
+function formatTaskDeadline(deadlineStr) {
+    if (!deadlineStr) return '';
+
+    const deadline = new Date(deadlineStr);
+    if (Number.isNaN(deadline.getTime())) return deadlineStr;
+
+    return deadline.toLocaleString([], {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 function isTaskOverdue(deadlineStr) {
     if (!deadlineStr) return false;
 
@@ -951,7 +975,7 @@ function renderTasks() {
         tr.innerHTML = `
             <td class="p-3 font-medium text-slate-200 text-xs">${task.assignee}</td>
             <td class="p-3 text-slate-300 text-xs max-w-xs truncate">${task.desc}</td>
-            <td class="p-3 text-slate-400 text-xs">${task.deadline}</td>
+            <td class="p-3 text-slate-400 text-xs">${formatTaskDeadline(task.deadline)}</td>
             <td class="p-3 text-xs">
                 ${task.publicToken
                     ? `<a href="task.html?id=${encodeURIComponent(task.id)}&token=${encodeURIComponent(task.publicToken)}" target="_blank" class="text-blue-600 hover:text-blue-800 underline font-bold">Open Task</a>`
@@ -1050,7 +1074,7 @@ function checkOverdueNotifications() {
             task.notifiedMissed = true;
 
             showToast(
-                `😔 ${task.assignee} couldn't complete the task on time (deadline was ${task.deadline})`,
+                `😔 ${task.assignee} couldn't complete the task on time (deadline was ${formatTaskDeadline(task.deadline)})`,
                 "error"
             );
 
