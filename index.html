@@ -420,13 +420,12 @@
                                 <datalist id="employeeOptions"></datalist>
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Deadline Date
+                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Deadline Date & Time
                                 </label>
                                 <div class="relative">
-                                    <input type="date" id="taskDeadline" required
+                                    <input type="datetime-local" id="taskDeadline" required
                                         class="w-full p-3 pr-12 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer transition shadow-sm">
-                                    <span onclick="openCalendar()"
-                                        class="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700 cursor-pointer text-lg hover:scale-110 transition"></span>
+                                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-700 text-lg"></span>
                                 </div>
                             </div>
                             <div class="md:col-span-2">
