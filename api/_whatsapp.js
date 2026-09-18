@@ -46,7 +46,18 @@ async function sendWhatsAppText(to, body) {
 
   if (!response.ok) {
     console.error('WhatsApp Graph API error:', JSON.stringify(result));
-    throw new Error(result?.error?.message || 'WhatsApp API request failed.');
+
+    const apiError = new Error(
+      result?.error?.message || 'WhatsApp API request failed.'
+    );
+
+    // Preserve Meta's diagnostic details without exposing the access token.
+    apiError.code = result?.error?.code || null;
+    apiError.type = result?.error?.type || null;
+    apiError.fbtraceId = result?.error?.fbtrace_id || null;
+    apiError.errorData = result?.error?.error_data || null;
+
+    throw apiError;
   }
 
   return result;
