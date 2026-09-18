@@ -1,7 +1,7 @@
 // WhatsApp configuration — kept in sync with the values currently used by script.js.
 const PHONE_NUMBER_ID = '1615049835013810';
 const GRAPH_VERSION = 'v26.0';
-const WHATSAPP_ACCESS_TOKEN = 'EAAXLCtl2jx0BSgJUWANj6MUzHIllcmCYahs3qMQkTZBV6sYPpzXwlLcES0FqamyDlnRC5oeaasuWLuK0jAePGbMldjO3WoMWtNHjP9YwQjpvBIpBRPVUmHvojF8HhZC8avMlIFuqZAZBFLhZC9AkH1U3LTcAC6qcsDaQFQkjXx0dV2XglOIc33PU2odrZBgAZDZD';
+const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || '';
 
 function cleanPhone(phone) {
   let value = String(phone || '').replace(/\D/g, '');
