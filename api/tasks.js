@@ -5,8 +5,6 @@ const { sendWhatsAppText } = require('./_whatsapp');
 
 const TASK_PATH = 'data/assigned-tasks.json';
 const EMPLOYEE_PATH = 'employees.json';
-const WA_PATH = 'whatsapp-users.json';
-
 async function readTasks() {
   const current = await getJsonFile(TASK_PATH);
   return {
@@ -18,11 +16,6 @@ async function readTasks() {
 async function readEmployees() {
   const current = await getJsonFile(EMPLOYEE_PATH);
   return Array.isArray(current.data) ? current.data : (current.data?.employees || []);
-}
-
-async function readWhatsAppUsers() {
-  const current = await getJsonFile(WA_PATH);
-  return current.data?.users || {};
 }
 
 function publicBaseUrl(req) {
@@ -110,8 +103,11 @@ module.exports = async function handler(req, res) {
       let whatsappErrorData = null;
 
       try {
-        const users = await readWhatsAppUsers();
-        const recipient = users[String(employee.id)]?.whatsappUserId || employee.phone;
+        const recipient = employee.phone;
+
+        if (!recipient) {
+          throw new Error(`No WhatsApp number is registered for ${employee.name}.`);
+        }
         const link = taskLink(req, task);
 
         await sendWhatsAppText(
