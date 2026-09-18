@@ -4,14 +4,17 @@ const { sendWhatsAppText, cleanPhone } = require('./_whatsapp');
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || '';
 
 async function findEmployeeByWhatsApp(from) {
-  const waFile = await getJsonFile('whatsapp-users.json');
-  const users = waFile.data?.users || {};
+  const file = await getJsonFile('employees.json');
+  const employees = Array.isArray(file.data)
+    ? file.data
+    : (file.data?.employees || []);
 
-  const match = Object.entries(users).find(
-    ([, value]) => cleanPhone(value?.whatsappUserId) === cleanPhone(from)
+  const normalizedFrom = cleanPhone(from);
+  const match = employees.find(
+    employee => cleanPhone(employee?.phone) === normalizedFrom
   );
 
-  return match ? Number(match[0]) : null;
+  return match ? Number(match.id) : null;
 }
 
 async function getEmployee(employeeId) {
