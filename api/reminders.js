@@ -33,16 +33,12 @@ module.exports = async function handler(req, res) {
 
     const taskFile = await getJsonFile('data/assigned-tasks.json');
     const employeeFile = await getJsonFile('employees.json');
-    const waFile = await getJsonFile('whatsapp-users.json');
-
     const tasks = Array.isArray(taskFile.data)
       ? taskFile.data
       : (taskFile.data?.tasks || []);
     const employees = Array.isArray(employeeFile.data)
       ? employeeFile.data
       : (employeeFile.data?.employees || []);
-    const users = waFile.data?.users || {};
-
     const now = Date.now();
     let changed = false;
     let sent = 0;
@@ -73,8 +69,8 @@ module.exports = async function handler(req, res) {
       );
       if (!employee) continue;
 
-      const recipient =
-        users[String(employee.id)]?.whatsappUserId || employee.phone;
+      const recipient = employee.phone;
+      if (!recipient) continue;
 
       for (const milestone of MILESTONES) {
         // Once the remaining time reaches this milestone, send it once.
