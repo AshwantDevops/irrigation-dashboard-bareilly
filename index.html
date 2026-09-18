@@ -414,10 +414,10 @@
                             <div>
                                 <label class="block text-xs font-bold text-slate-800 mb-1.5">Employee Name (Type or
                                     Select)</label>
-                                <input type="text" id="taskAssignee" list="employeeOptions" required
-                                    class="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none transition shadow-sm"
-                                    placeholder="Type or choose employee name">
-                                <datalist id="employeeOptions"></datalist>
+                                <select id="taskAssignee" required
+                                    class="w-full p-3 bg-slate-50 border border-slate-300 rounded-2xl text-sm text-slate-900 font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none transition shadow-sm">
+                                    <option value="">Select employee</option>
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-800 mb-1.5">Deadline Date & Time
