@@ -2,7 +2,6 @@
 
 const WHATSAPP_PHONE_NUMBER_ID = "1615049835013810";
 const WHATSAPP_API_VERSION = "v26.0";
-const WHATSAPP_ACCESS_TOKEN = "EAAXLCtl2jx0BSgJUWANj6MUzHIllcmCYahs3qMQkTZBV6sYPpzXwlLcES0FqamyDlnRC5oeaasuWLuK0jAePGbMldjO3WoMWtNHjP9YwQjpvBIpBRPVUmHvojF8HhZC8avMlIFuqZAZBFLhZC9AkH1U3LTcAC6qcsDaQFQkjXx0dV2XglOIc33PU2odrZBgAZDZD";
 
 async function sendWhatsAppNotification(whatsappRecipient, taskTitle, deadline, taskId, publicToken) {
     try {
