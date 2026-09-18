@@ -104,6 +104,11 @@ module.exports = async function handler(req, res) {
       );
 
       let whatsappSent = false;
+      let whatsappError = null;
+      let whatsappErrorCode = null;
+      let whatsappErrorType = null;
+      let whatsappErrorData = null;
+
       try {
         const users = await readWhatsAppUsers();
         const recipient = users[String(employee.id)]?.whatsappUserId || employee.phone;
@@ -116,9 +121,21 @@ module.exports = async function handler(req, res) {
         whatsappSent = true;
       } catch (error) {
         console.error('Assignment WhatsApp failed:', error);
+        whatsappError = error.message || 'WhatsApp API request failed.';
+        whatsappErrorCode = error.code || null;
+        whatsappErrorType = error.type || null;
+        whatsappErrorData = error.errorData || null;
       }
 
-      return res.status(201).json({ task, tasks: updated, whatsappSent });
+      return res.status(201).json({
+        task,
+        tasks: updated,
+        whatsappSent,
+        whatsappError,
+        whatsappErrorCode,
+        whatsappErrorType,
+        whatsappErrorData
+      });
     }
 
     if (req.method === 'PATCH') {
