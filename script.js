@@ -882,10 +882,10 @@ async function handleAssignTask(e) {
         if (taskForm) {
             taskForm.reset();
 
-            // Keep the logged-in employee selected for the next assignment.
+            // Leave the assignee blank so the next task requires an explicit selection.
             const assigneeField = document.getElementById('taskAssignee');
-            if (assigneeField && currentUser?.name) {
-                assigneeField.value = currentUser.name;
+            if (assigneeField) {
+                assigneeField.value = '';
             }
         }
 
@@ -896,7 +896,14 @@ async function handleAssignTask(e) {
             showToast(`Task assigned, but WhatsApp notification was not sent.${reason}`, "error");
             console.error("WhatsApp notification failed:", result.whatsappError || "Unknown error");
         } else {
-            showToast("Task assigned and WhatsApp notification sent.", "success");
+            const status = result.whatsappStatus || 'accepted';
+            if (status === 'delivered') {
+                showToast("Task assigned and WhatsApp notification delivered.", "success");
+            } else if (status === 'read') {
+                showToast("Task assigned and WhatsApp notification read.", "success");
+            } else {
+                showToast("Task assigned. WhatsApp request accepted by Meta; delivery status is pending.", "success");
+            }
         }
     } catch (error) {
         console.error(error);
