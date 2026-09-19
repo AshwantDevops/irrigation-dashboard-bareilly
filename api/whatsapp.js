@@ -6,6 +6,7 @@ const { sendWhatsAppTemplate, cleanPhone } = require('./_whatsapp');
 const EMPLOYEE_PATH = 'employees.json';
 const TASK_ASSIGNMENT_TEMPLATE = 'task_assignment';
 const TASK_ASSIGNMENT_LANGUAGE = 'en_US';
+const DEPLOYMENT_VERSION = 'whatsapp-debug-v4-20260919';
 
 function publicBaseUrl(req) {
   const forwarded = req.headers['x-forwarded-proto'] || 'https';
@@ -97,6 +98,7 @@ module.exports = async function handler(req, res) {
       messageId: result?.messages?.[0]?.id || null
     }));
     res.setHeader('X-Irrigation-Request-Id', requestId);
+    res.setHeader('X-Irrigation-Deployment-Version', DEPLOYMENT_VERSION);
 
     return res.status(200).json({
       ok: true,
