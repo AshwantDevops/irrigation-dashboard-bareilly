@@ -135,11 +135,11 @@ module.exports = async function handler(req, res) {
           TASK_ASSIGNMENT_TEMPLATE,
           TASK_ASSIGNMENT_LANGUAGE,
           [
-            employee.name,
-            task.desc,
-            deadline,
-            task.id,
-            link
+            { name: 'employee_name', value: employee.name },
+            { name: 'task_description', value: task.desc },
+            { name: 'deadline', value: deadline },
+            { name: 'task_id', value: task.id },
+            { name: 'task_url', value: link }
           ]
         );
 
