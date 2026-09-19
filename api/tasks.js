@@ -29,7 +29,7 @@ function publicBaseUrl(req) {
 }
 
 function taskLink(req, task) {
-  return `${publicBaseUrl(req)}/task.html?id=${encodeURIComponent(task.id)}#token=${encodeURIComponent(task.publicToken)}`;
+  return `${publicBaseUrl(req)}/task.html?id=${encodeURIComponent(task.id)}&token=${encodeURIComponent(task.publicToken)}&wa=1`;
 }
 
 function formatWhatsAppDeadline(deadline) {
