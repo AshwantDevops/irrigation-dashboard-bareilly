@@ -7,7 +7,7 @@ const TASK_PATH = 'data/assigned-tasks.json';
 const EMPLOYEE_PATH = 'employees.json';
 const TASK_ASSIGNMENT_TEMPLATE = 'task_assignment';
 const TASK_ASSIGNMENT_LANGUAGE = 'en_US';
-const DEPLOYMENT_VERSION = 'whatsapp-template-v3-20260919';
+const DEPLOYMENT_VERSION = 'whatsapp-debug-v4-20260919';
 
 async function readTasks() {
   const current = await getJsonFile(TASK_PATH);
