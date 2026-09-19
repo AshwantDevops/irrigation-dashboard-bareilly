@@ -46,7 +46,11 @@
 <script>
 const params = new URLSearchParams(location.search);
 const id = params.get('id');
-// WhatsApp may append trailing template text to a detected URL. Keep only the token value itself.\nconst rawToken = params.get('token') || '';\nconst token = rawToken.split(/\\r?\\n|\\\\n/)[0].trim();
+const rawToken = params.get('token') || '';
+// Task tokens are always 36 hexadecimal characters. This protects the link
+// when WhatsApp appends literal "\\n\\nReply..." to the detected URL.
+const tokenMatch = rawToken.match(/^[a-f0-9]{36}/i);
+const token = tokenMatch ? tokenMatch[0] : rawToken.trim();
 
 function show(message) {
   document.getElementById('message').textContent = message;
