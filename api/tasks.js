@@ -159,6 +159,20 @@ module.exports = async function handler(req, res) {
 
         const link = taskLink(req, task);
         const deadline = formatWhatsAppDeadline(task.deadline);
+        const normalizedRecipient = String(recipient).replace(/\D/g, '');
+
+        console.info('[TASK_ASSIGNMENT][START]', JSON.stringify({
+          requestId: `task-${task.id}`,
+          deploymentVersion: DEPLOYMENT_VERSION,
+          taskId: task.id,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          recipientLast4: normalizedRecipient.slice(-4),
+          templateName: TASK_ASSIGNMENT_TEMPLATE,
+          templateLanguage: TASK_ASSIGNMENT_LANGUAGE,
+          deadline,
+          taskUrl: link
+        }));
 
         const whatsappResult = await sendWhatsAppTemplate(
           recipient,
@@ -178,6 +192,14 @@ module.exports = async function handler(req, res) {
         whatsappStatus = 'accepted';
         whatsappStatusAt = new Date().toISOString();
         whatsappSent = true;
+        console.info('[TASK_ASSIGNMENT][SUCCESS]', JSON.stringify({
+          requestId: `task-${task.id}`,
+          taskId: task.id,
+          employeeId: employee.id,
+          recipientLast4: String(recipient).replace(/\D/g, '').slice(-4),
+          messageId: whatsappMessageId,
+          whatsappStatus
+        }));
       } catch (error) {
         console.error('[TaskAssignment][WHATSAPP_ERROR]', JSON.stringify({
           requestId,
@@ -199,6 +221,20 @@ module.exports = async function handler(req, res) {
         whatsappErrorCode = error.code || null;
         whatsappErrorType = error.type || null;
         whatsappErrorData = error.errorData || null;
+        console.error('[TASK_ASSIGNMENT][FAILED]', JSON.stringify({
+          requestId: `task-${task.id}`,
+          taskId: task.id,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          recipientLast4: String(employee.phone || '').replace(/\D/g, '').slice(-4),
+          templateName: TASK_ASSIGNMENT_TEMPLATE,
+          templateLanguage: TASK_ASSIGNMENT_LANGUAGE,
+          errorMessage: whatsappError,
+          errorCode: whatsappErrorCode,
+          errorType: whatsappErrorType,
+          errorData: whatsappErrorData,
+          fbtraceId: error.fbtraceId || null
+        }));
       }
 
       // The Graph API accepts a message before WhatsApp finishes delivery.
