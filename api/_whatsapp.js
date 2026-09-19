@@ -64,7 +64,7 @@ async function sendWhatsAppText(to, body) {
 
 // Sends a WhatsApp template with named body variables.
 // Each parameter should be { name: 'template_variable', value: '...' }.
-async function sendWhatsAppTemplate(to, templateName, languageCode, parameters = []) {
+async function sendWhatsAppTemplate(to, templateName, languageCode, parameters = [], debugContext = {}) {
   const token = WHATSAPP_ACCESS_TOKEN;
 
   if (!token) {
@@ -75,6 +75,17 @@ async function sendWhatsAppTemplate(to, templateName, languageCode, parameters =
   if (recipient.length < 10) {
     throw new Error('Invalid WhatsApp recipient number.');
   }
+
+  const requestId = debugContext.requestId || 'no-request-id';
+  const recipientLast4 = recipient.slice(-4);
+
+  console.info('[WhatsApp][Template][START]', JSON.stringify({
+    requestId,
+    templateName,
+    languageCode,
+    recipientLast4,
+    parameterNames: parameters.map(parameter => parameter?.name).filter(Boolean)
+  }));
 
   const bodyParameters = parameters.map(parameter => {
     if (!parameter || !parameter.name) {
@@ -119,6 +130,21 @@ async function sendWhatsAppTemplate(to, templateName, languageCode, parameters =
 
   const result = await response.json();
 
+  console.info('[WhatsApp][Template][META_RESPONSE]', JSON.stringify({
+    requestId,
+    templateName,
+    languageCode,
+    recipientLast4,
+    httpStatus: response.status,
+    ok: response.ok,
+    messageId: result?.messages?.[0]?.id || null,
+    metaErrorCode: result?.error?.code || null,
+    metaErrorType: result?.error?.type || null,
+    metaErrorMessage: result?.error?.message || null,
+    metaErrorData: result?.error?.error_data || null,
+    fbtraceId: result?.error?.fbtrace_id || null
+  }));
+
   if (!response.ok) {
     console.error('WhatsApp template API error:', JSON.stringify(result));
 
@@ -133,6 +159,14 @@ async function sendWhatsAppTemplate(to, templateName, languageCode, parameters =
 
     throw apiError;
   }
+
+  console.info('[WhatsApp][Template][SUCCESS]', JSON.stringify({
+    requestId,
+    templateName,
+    languageCode,
+    recipientLast4,
+    messageId: result?.messages?.[0]?.id || null
+  }));
 
   return result;
 }
