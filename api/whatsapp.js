@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { authenticate, sendAuthError } = require('./_auth');
 const { getJsonFile } = require('./_github');
 const { sendWhatsAppTemplate, cleanPhone } = require('./_whatsapp');
@@ -24,6 +25,16 @@ async function findEmployeeByPhone(phone) {
 
 module.exports = async function handler(req, res) {
   try {
+    const requestId = crypto.randomUUID();
+    console.info('[LegacyWhatsAppRoute][START]', JSON.stringify({
+      requestId,
+      method: req.method,
+      host: req.headers.host || null,
+      route: '/api/whatsapp',
+      template: TASK_ASSIGNMENT_TEMPLATE,
+      language: TASK_ASSIGNMENT_LANGUAGE
+    }));
+
     await authenticate(req);
 
     if (req.method !== 'POST') {
@@ -37,6 +48,16 @@ module.exports = async function handler(req, res) {
     }
 
     const employee = await findEmployeeByPhone(body.recipient);
+
+    console.info('[LegacyWhatsAppRoute][EMPLOYEE]', JSON.stringify({
+      requestId,
+      recipientLast4: String(body.recipient || '').replace(/\D/g, '').slice(-4),
+      employeeFound: Boolean(employee),
+      employeeId: employee?.id || null,
+      employeeName: employee?.name || null,
+      template: TASK_ASSIGNMENT_TEMPLATE,
+      language: TASK_ASSIGNMENT_LANGUAGE
+    }));
 
     if (!employee) {
       return res.status(403).json({
@@ -63,8 +84,19 @@ module.exports = async function handler(req, res) {
         { name: 'deadline', value: body.deadline },
         { name: 'task_id', value: body.taskId },
         { name: 'task_url', value: taskUrl }
-      ]
+      ],
+      { requestId }
     );
+
+    console.info('[LegacyWhatsAppRoute][END]', JSON.stringify({
+      requestId,
+      taskId: body.taskId,
+      employeeId: employee.id,
+      template: TASK_ASSIGNMENT_TEMPLATE,
+      language: TASK_ASSIGNMENT_LANGUAGE,
+      messageId: result?.messages?.[0]?.id || null
+    }));
+    res.setHeader('X-Irrigation-Request-Id', requestId);
 
     return res.status(200).json({
       ok: true,
@@ -73,6 +105,13 @@ module.exports = async function handler(req, res) {
       whatsappTemplateLanguage: TASK_ASSIGNMENT_LANGUAGE
     });
   } catch (error) {
+    console.error('[LegacyWhatsAppRoute][ERROR]', JSON.stringify({
+      errorMessage: error.message || null,
+      metaErrorCode: error.code || null,
+      metaErrorType: error.type || null,
+      metaErrorData: error.errorData || null,
+      fbtraceId: error.fbtraceId || null
+    }));
     console.error(error);
     if (error.statusCode) return sendAuthError(res, error);
 
