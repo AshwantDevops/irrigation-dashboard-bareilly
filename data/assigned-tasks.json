@@ -1,39 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": 1789835998557,
-      "assigneeId": 22,
-      "assignee": "Ashwant Dhaka",
-      "deadline": "2026-09-29",
-      "desc": "Canal inspection",
-      "publicToken": "ae2fce1b4d154431e2804ad2e7178ecb1ebf",
-      "createdBy": "ashwindhaka@gmail.com",
-      "createdAt": "2026-09-19T16:39:58.558Z",
-      "m80": false,
-      "m50": false,
-      "m10": false,
-      "status": "Pending",
-      "done": false,
-      "completedAt": null,
-      "remindersSent": []
-    },
-    {
-      "id": 1789836088468,
-      "assigneeId": 22,
-      "assignee": "Ashwant Dhaka",
-      "deadline": "2026-09-29",
-      "desc": "Canal inspection",
-      "publicToken": "35e4708c976ebf709e86f4cec7090c05ce6f",
-      "createdBy": "ashwindhaka@gmail.com",
-      "createdAt": "2026-09-19T16:41:28.469Z",
-      "m80": false,
-      "m50": false,
-      "m10": false,
-      "status": "Pending",
-      "done": false,
-      "completedAt": null,
-      "remindersSent": []
-    }
-  ]
+  "tasks": []
 }
