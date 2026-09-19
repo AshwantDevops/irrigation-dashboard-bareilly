@@ -22,7 +22,7 @@ async function sendWhatsAppNotification(whatsappRecipient, taskTitle, deadline, 
             throw new Error(error.message || 'WhatsApp API request failed');
         }
 
-        showToast("Task assigned. WhatsApp request accepted by Meta; delivery status is pending.", "success");
+        showToast(`Task assigned. WhatsApp template ${result.whatsappTemplateName || "task_assignment"} accepted by Meta; delivery status is pending.`, "success");
         return true;
     } catch (error) {
         console.error("WhatsApp notification error:", error);
