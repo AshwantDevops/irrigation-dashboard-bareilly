@@ -43,6 +43,21 @@ async function updateTasks(mutator, commitMessage = 'Update task from WhatsApp')
 async function processMessageStatuses(statuses) {
   if (!Array.isArray(statuses) || statuses.length === 0) return;
 
+  console.info('[WhatsAppWebhook][STATUSES]', JSON.stringify(statuses.map(status => ({
+    messageId: status?.id || null,
+    status: status?.status || null,
+    timestamp: status?.timestamp || null,
+    recipientLast4: String(status?.recipient_id || '').replace(/\D/g, '').slice(-4),
+    errors: Array.isArray(status?.errors)
+      ? status.errors.map(error => ({
+          code: error?.code || null,
+          title: error?.title || null,
+          message: error?.message || null,
+          details: error?.error_data?.details || error?.error_data || null
+        }))
+      : []
+  }))));
+
   const file = await getJsonFile('data/assigned-tasks.json');
   const tasks = Array.isArray(file.data) ? file.data : (file.data?.tasks || []);
   let changed = false;
@@ -54,7 +69,17 @@ async function processMessageStatuses(statuses) {
       item => String(item.whatsappMessageId || '') === String(status.id)
     );
 
-    if (!task) continue;
+    if (!task) {
+      console.warn('[WhatsAppWebhook][STATUS_NO_TASK_MATCH]', JSON.stringify({
+        messageId: status.id,
+        status: status.status,
+        recipientLast4: String(status?.recipient_id || '').replace(/\D/g, '').slice(-4),
+        errorCodes: Array.isArray(status?.errors)
+          ? status.errors.map(error => error?.code).filter(Boolean)
+          : []
+      }));
+      continue;
+    }
 
     task.whatsappStatus = status.status;
     task.whatsappStatusAt = status.timestamp
