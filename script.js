@@ -429,11 +429,6 @@ function initDashboard() {
     renderMasterSchedule();
     renderAccountTab();
 
-    // Auto-populate the logged-in employee in the task assignment form.
-    const taskAssignee = document.getElementById('taskAssignee');
-    if (taskAssignee && currentUser?.name) {
-        taskAssignee.value = currentUser.name;
-    }
 }
 
 // ================= UTILS & STORAGE =================
@@ -803,10 +798,6 @@ function populateEmployeeOptions() {
         emp => emp.name && emp.name.trim().toLowerCase() === selectedName.trim().toLowerCase()
     )) {
         select.value = selectedName;
-    } else if (currentUser?.name && employees.some(
-        emp => emp.name && emp.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
-    )) {
-        select.value = currentUser.name;
     }
 }
 
