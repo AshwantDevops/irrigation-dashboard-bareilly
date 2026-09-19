@@ -7,6 +7,7 @@ const TASK_PATH = 'data/assigned-tasks.json';
 const EMPLOYEE_PATH = 'employees.json';
 const TASK_ASSIGNMENT_TEMPLATE = 'task_assignment';
 const TASK_ASSIGNMENT_LANGUAGE = 'en_US';
+const DEPLOYMENT_VERSION = 'whatsapp-template-v3-20260919';
 
 async function readTasks() {
   const current = await getJsonFile(TASK_PATH);
@@ -203,6 +204,9 @@ module.exports = async function handler(req, res) {
         whatsappMessageId,
         whatsappStatus,
         whatsappStatusAt,
+        whatsappTemplateName: TASK_ASSIGNMENT_TEMPLATE,
+        whatsappTemplateLanguage: TASK_ASSIGNMENT_LANGUAGE,
+        deploymentVersion: DEPLOYMENT_VERSION,
         whatsappError,
         whatsappErrorCode,
         whatsappErrorType,
