@@ -115,6 +115,9 @@ module.exports = async function handler(req, res) {
       );
 
       let whatsappSent = false;
+      let whatsappMessageId = null;
+      let whatsappStatus = 'not_sent';
+      let whatsappStatusAt = null;
       let whatsappError = null;
       let whatsappErrorCode = null;
       let whatsappErrorType = null;
@@ -130,7 +133,7 @@ module.exports = async function handler(req, res) {
         const link = taskLink(req, task);
         const deadline = formatWhatsAppDeadline(task.deadline);
 
-        await sendWhatsAppTemplate(
+        const whatsappResult = await sendWhatsAppTemplate(
           recipient,
           TASK_ASSIGNMENT_TEMPLATE,
           TASK_ASSIGNMENT_LANGUAGE,
@@ -143,19 +146,63 @@ module.exports = async function handler(req, res) {
           ]
         );
 
+        whatsappMessageId = whatsappResult?.messages?.[0]?.id || null;
+        whatsappStatus = 'accepted';
+        whatsappStatusAt = new Date().toISOString();
         whatsappSent = true;
       } catch (error) {
         console.error('Assignment WhatsApp template failed:', error);
+        whatsappStatus = 'failed';
+        whatsappStatusAt = new Date().toISOString();
         whatsappError = error.message || 'WhatsApp API request failed.';
         whatsappErrorCode = error.code || null;
         whatsappErrorType = error.type || null;
         whatsappErrorData = error.errorData || null;
       }
 
+      // The Graph API accepts a message before WhatsApp finishes delivery.
+      // Persist the returned WAMID so the webhook can later update the real
+      // sent/delivered/read/failed status for this task.
+      let responseTasks = updated;
+      try {
+        const latest = await readTasks();
+        const latestIndex = latest.tasks.findIndex(t => String(t.id) === String(task.id));
+
+        if (latestIndex >= 0) {
+          latest.tasks[latestIndex] = {
+            ...latest.tasks[latestIndex],
+            whatsappMessageId,
+            whatsappStatus,
+            whatsappStatusAt,
+            whatsappError,
+            whatsappErrorCode,
+            whatsappErrorType,
+            whatsappErrorData
+          };
+
+          await putJsonFile(
+            TASK_PATH,
+            { version: 1, tasks: latest.tasks },
+            latest.current.sha,
+            `Record WhatsApp status for task #${id}`
+          );
+
+          responseTasks = latest.tasks;
+          Object.assign(task, latest.tasks[latestIndex]);
+        }
+      } catch (trackingError) {
+        // Do not report a task assignment as failed just because status
+        // bookkeeping could not be written after Meta accepted the message.
+        console.error('Unable to persist WhatsApp message status:', trackingError);
+      }
+
       return res.status(201).json({
         task,
-        tasks: updated,
+        tasks: responseTasks,
         whatsappSent,
+        whatsappMessageId,
+        whatsappStatus,
+        whatsappStatusAt,
         whatsappError,
         whatsappErrorCode,
         whatsappErrorType,
