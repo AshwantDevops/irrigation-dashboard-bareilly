@@ -46,7 +46,7 @@
 <script>
 const params = new URLSearchParams(location.search);
 const id = params.get('id');
-const token = params.get('token');
+// WhatsApp may append trailing template text to a detected URL. Keep only the token value itself.\nconst rawToken = params.get('token') || '';\nconst token = rawToken.split(/\\r?\\n|\\\\n/)[0].trim();
 
 function show(message) {
   document.getElementById('message').textContent = message;
