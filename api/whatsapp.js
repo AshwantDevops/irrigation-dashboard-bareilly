@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
     }
 
     const taskUrl =
-      `${publicBaseUrl(req)}/task.html?id=${encodeURIComponent(body.taskId)}&token=${encodeURIComponent(body.publicToken)}#task`;
+      `${publicBaseUrl(req)}/task.html?id=${encodeURIComponent(body.taskId)}&token=${encodeURIComponent(body.publicToken)}&wa=1`;
 
     const result = await sendWhatsAppTemplate(
       employee.phone,
