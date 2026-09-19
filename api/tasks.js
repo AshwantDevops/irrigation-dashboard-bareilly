@@ -48,7 +48,7 @@ function formatWhatsAppDeadline(deadline) {
 
 module.exports = async function handler(req, res) {
   try {
-    const publicToken = req.query.token || req.body?.token || '';
+    const rawPublicToken = req.query.token || req.body?.token || '';\n    // WhatsApp can append literal \\n text (for example \\n\\nReply) to a detected URL.\n    // Strip only the trailing escaped/newline text before validating the task token.\n    const publicToken = String(rawPublicToken).split(/(?:\\\\r?\\\\n|\\r?\\n)/)[0].trim();
     const publicRequest = Boolean(publicToken);
     let user = null;
 
