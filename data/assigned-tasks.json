@@ -1,22 +1,4 @@
 {
   "version": 1,
-  "tasks": [
-    {
-      "id": 1789835628940,
-      "assigneeId": 23,
-      "assignee": "Anju",
-      "deadline": "2026-10-01",
-      "desc": "Canal inspection",
-      "publicToken": "f036adc78047413151f1a54d0641376f8d04",
-      "createdBy": "ashwindhaka@gmail.com",
-      "createdAt": "2026-09-19T16:33:48.940Z",
-      "m80": false,
-      "m50": false,
-      "m10": false,
-      "status": "Pending",
-      "done": false,
-      "completedAt": null,
-      "remindersSent": []
-    }
-  ]
+  "tasks": []
 }
