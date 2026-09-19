@@ -51,7 +51,6 @@ async function sendWhatsAppText(to, body) {
       result?.error?.message || 'WhatsApp API request failed.'
     );
 
-    // Preserve Meta's diagnostic details without exposing the access token.
     apiError.code = result?.error?.code || null;
     apiError.type = result?.error?.type || null;
     apiError.fbtraceId = result?.error?.fbtrace_id || null;
@@ -63,6 +62,8 @@ async function sendWhatsAppText(to, body) {
   return result;
 }
 
+// Sends a WhatsApp template with named body variables.
+// Each parameter should be { name: 'template_variable', value: '...' }.
 async function sendWhatsAppTemplate(to, templateName, languageCode, parameters = []) {
   const token = WHATSAPP_ACCESS_TOKEN;
 
@@ -74,6 +75,18 @@ async function sendWhatsAppTemplate(to, templateName, languageCode, parameters =
   if (recipient.length < 10) {
     throw new Error('Invalid WhatsApp recipient number.');
   }
+
+  const bodyParameters = parameters.map(parameter => {
+    if (!parameter || !parameter.name) {
+      throw new Error('WhatsApp template parameters must include variable names.');
+    }
+
+    return {
+      type: 'text',
+      parameter_name: parameter.name,
+      text: String(parameter.value ?? '')
+    };
+  });
 
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`,
@@ -96,10 +109,7 @@ async function sendWhatsAppTemplate(to, templateName, languageCode, parameters =
           components: [
             {
               type: 'body',
-              parameters: parameters.map(value => ({
-                type: 'text',
-                text: String(value ?? '')
-              }))
+              parameters: bodyParameters
             }
           ]
         }
@@ -116,7 +126,6 @@ async function sendWhatsAppTemplate(to, templateName, languageCode, parameters =
       result?.error?.message || 'WhatsApp template request failed.'
     );
 
-    // Preserve Meta's diagnostic details without exposing the access token.
     apiError.code = result?.error?.code || null;
     apiError.type = result?.error?.type || null;
     apiError.fbtraceId = result?.error?.fbtrace_id || null;
