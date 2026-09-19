@@ -23,19 +23,71 @@ async function getEmployee(employeeId) {
   return employees.find(e => Number(e.id) === Number(employeeId)) || null;
 }
 
-async function updateTasks(mutator) {
+async function updateTasks(mutator, commitMessage = 'Update task from WhatsApp') {
   const file = await getJsonFile('data/assigned-tasks.json');
   const tasks = Array.isArray(file.data) ? file.data : (file.data?.tasks || []);
   const changed = await mutator(tasks);
+
   if (changed) {
     await putJsonFile(
       'data/assigned-tasks.json',
       { version: 1, tasks },
       file.sha,
-      'Update task from WhatsApp'
+      commitMessage
     );
   }
+
   return tasks;
+}
+
+async function processMessageStatuses(statuses) {
+  if (!Array.isArray(statuses) || statuses.length === 0) return;
+
+  const file = await getJsonFile('data/assigned-tasks.json');
+  const tasks = Array.isArray(file.data) ? file.data : (file.data?.tasks || []);
+  let changed = false;
+
+  for (const status of statuses) {
+    if (!status?.id || !status?.status) continue;
+
+    const task = tasks.find(
+      item => String(item.whatsappMessageId || '') === String(status.id)
+    );
+
+    if (!task) continue;
+
+    task.whatsappStatus = status.status;
+    task.whatsappStatusAt = status.timestamp
+      ? new Date(Number(status.timestamp) * 1000).toISOString()
+      : new Date().toISOString();
+
+    if (status.status === 'failed') {
+      const errors = Array.isArray(status.errors) ? status.errors : [];
+      task.whatsappError = errors
+        .map(error => {
+          const code = error?.code ? `[${error.code}] ` : '';
+          return `${code}${error?.title || error?.message || error?.details || 'WhatsApp delivery failed.'}`;
+        })
+        .filter(Boolean)
+        .join(' | ') || 'WhatsApp delivery failed.';
+
+      task.whatsappErrorCode = errors[0]?.code || null;
+    } else if (status.status === 'sent' || status.status === 'delivered' || status.status === 'read') {
+      task.whatsappError = null;
+      task.whatsappErrorCode = null;
+    }
+
+    changed = true;
+  }
+
+  if (!changed) return;
+
+  await putJsonFile(
+    'data/assigned-tasks.json',
+    { version: 1, tasks },
+    file.sha,
+    'Update WhatsApp message delivery status'
+  );
 }
 
 module.exports = async function handler(req, res) {
@@ -58,6 +110,9 @@ module.exports = async function handler(req, res) {
 
     for (const entry of entries) {
       for (const change of entry.changes || []) {
+        const statuses = change.value?.statuses || [];
+        await processMessageStatuses(statuses);
+
         const messages = change.value?.messages || [];
 
         for (const message of messages) {
