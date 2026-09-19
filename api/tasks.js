@@ -49,6 +49,16 @@ function formatWhatsAppDeadline(deadline) {
 
 module.exports = async function handler(req, res) {
   try {
+    const requestId = crypto.randomUUID();
+    console.info('[TaskAssignment][START]', JSON.stringify({
+      requestId,
+      method: req.method,
+      host: req.headers.host || null,
+      deploymentVersion: DEPLOYMENT_VERSION,
+      queryId: req.query.id || null,
+      hasPublicToken: Boolean(req.query.token || req.body?.token)
+    }));
+
     const rawPublicToken = req.query.token || req.body?.token || '';
     // WhatsApp can append text after a detected URL. The public token is
     // always a 36-character lowercase hexadecimal value, so extract exactly
@@ -86,6 +96,17 @@ module.exports = async function handler(req, res) {
       const body = req.body || {};
       const employees = await readEmployees();
       const employee = employees.find(e => Number(e.id) === Number(body.assigneeId));
+
+      console.info('[TaskAssignment][EMPLOYEE]', JSON.stringify({
+        requestId,
+        assigneeId: body.assigneeId || null,
+        employeeFound: Boolean(employee),
+        employeeId: employee?.id || null,
+        employeeName: employee?.name || null,
+        phoneLast4: employee?.phone ? String(employee.phone).replace(/\D/g, '').slice(-4) : null,
+        template: TASK_ASSIGNMENT_TEMPLATE,
+        language: TASK_ASSIGNMENT_LANGUAGE
+      }));
 
       if (!employee) return res.status(400).json({ message: 'Assigned employee not found.' });
       if (!body.desc || !body.deadline) {
@@ -149,7 +170,8 @@ module.exports = async function handler(req, res) {
             { name: 'deadline', value: deadline },
             { name: 'task_id', value: task.id },
             { name: 'task_url', value: link }
-          ]
+          ],
+          { requestId }
         );
 
         whatsappMessageId = whatsappResult?.messages?.[0]?.id || null;
@@ -157,6 +179,19 @@ module.exports = async function handler(req, res) {
         whatsappStatusAt = new Date().toISOString();
         whatsappSent = true;
       } catch (error) {
+        console.error('[TaskAssignment][WHATSAPP_ERROR]', JSON.stringify({
+          requestId,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          phoneLast4: String(employee.phone || '').replace(/\D/g, '').slice(-4),
+          template: TASK_ASSIGNMENT_TEMPLATE,
+          language: TASK_ASSIGNMENT_LANGUAGE,
+          errorMessage: error.message || null,
+          metaErrorCode: error.code || null,
+          metaErrorType: error.type || null,
+          metaErrorData: error.errorData || null,
+          fbtraceId: error.fbtraceId || null
+        }));
         console.error('Assignment WhatsApp template failed:', error);
         whatsappStatus = 'failed';
         whatsappStatusAt = new Date().toISOString();
@@ -201,6 +236,19 @@ module.exports = async function handler(req, res) {
         // bookkeeping could not be written after Meta accepted the message.
         console.error('Unable to persist WhatsApp message status:', trackingError);
       }
+
+      res.setHeader('X-Irrigation-Deployment-Version', DEPLOYMENT_VERSION);
+      res.setHeader('X-Irrigation-Request-Id', requestId);
+
+      console.info('[TaskAssignment][END]', JSON.stringify({
+        requestId,
+        taskId: task.id,
+        whatsappStatus,
+        whatsappSent,
+        whatsappMessageId,
+        whatsappErrorCode,
+        whatsappErrorType
+      }));
 
       return res.status(201).json({
         task,
