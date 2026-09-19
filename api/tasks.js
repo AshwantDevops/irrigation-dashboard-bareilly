@@ -1,10 +1,13 @@
 const crypto = require('crypto');
 const { authenticate, sendAuthError } = require('./_auth');
 const { getJsonFile, putJsonFile } = require('./_github');
-const { sendWhatsAppText } = require('./_whatsapp');
+const { sendWhatsAppTemplate } = require('./_whatsapp');
 
 const TASK_PATH = 'data/assigned-tasks.json';
 const EMPLOYEE_PATH = 'employees.json';
+const TASK_ASSIGNMENT_TEMPLATE = 'task_assignment';
+const TASK_ASSIGNMENT_LANGUAGE = 'en_US';
+
 async function readTasks() {
   const current = await getJsonFile(TASK_PATH);
   return {
@@ -26,6 +29,21 @@ function publicBaseUrl(req) {
 
 function taskLink(req, task) {
   return `${publicBaseUrl(req)}/task.html?id=${encodeURIComponent(task.id)}&token=${encodeURIComponent(task.publicToken)}`;
+}
+
+function formatWhatsAppDeadline(deadline) {
+  const date = new Date(deadline);
+  if (Number.isNaN(date.getTime())) return String(deadline);
+
+  return new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
 }
 
 module.exports = async function handler(req, res) {
@@ -108,15 +126,26 @@ module.exports = async function handler(req, res) {
         if (!recipient) {
           throw new Error(`No WhatsApp number is registered for ${employee.name}.`);
         }
-        const link = taskLink(req, task);
 
-        await sendWhatsAppText(
+        const link = taskLink(req, task);
+        const deadline = formatWhatsAppDeadline(task.deadline);
+
+        await sendWhatsAppTemplate(
           recipient,
-          `📢 Irrigation Division Bareilly\\n\\nNew task assigned to you.\\n\\n📋 Task: ${task.desc}\\n📅 Deadline: ${task.deadline}\\n\\nOpen task: ${link}\\n\\nReply DONE ${task.id} on WhatsApp when completed.`
+          TASK_ASSIGNMENT_TEMPLATE,
+          TASK_ASSIGNMENT_LANGUAGE,
+          [
+            employee.name,
+            task.desc,
+            deadline,
+            task.id,
+            link
+          ]
         );
+
         whatsappSent = true;
       } catch (error) {
-        console.error('Assignment WhatsApp failed:', error);
+        console.error('Assignment WhatsApp template failed:', error);
         whatsappError = error.message || 'WhatsApp API request failed.';
         whatsappErrorCode = error.code || null;
         whatsappErrorType = error.type || null;
