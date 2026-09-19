@@ -49,7 +49,12 @@ function formatWhatsAppDeadline(deadline) {
 
 module.exports = async function handler(req, res) {
   try {
-    const rawPublicToken = req.query.token || req.body?.token || '';\n    // WhatsApp can append literal \\n text (for example \\n\\nReply) to a detected URL.\n    // Strip only the trailing escaped/newline text before validating the task token.\n    const publicToken = String(rawPublicToken).split(/(?:\\\\r?\\\\n|\\r?\\n)/)[0].trim();
+    const rawPublicToken = req.query.token || req.body?.token || '';
+    // WhatsApp can append text after a detected URL. The public token is
+    // always a 36-character lowercase hexadecimal value, so extract exactly
+    // that value before validating it.
+    const tokenMatch = String(rawPublicToken).match(/^[a-f0-9]{36}/i);
+    const publicToken = tokenMatch ? tokenMatch[0] : String(rawPublicToken).trim();
     const publicRequest = Boolean(publicToken);
     let user = null;
 
@@ -67,7 +72,7 @@ module.exports = async function handler(req, res) {
         if (!task) return res.status(404).json({ message: 'Task not found.' });
 
         // A public task page may request a task using its public token.
-        if (req.query.token && req.query.token === task.publicToken) {
+        if (publicToken && publicToken === task.publicToken) {
           return res.status(200).json({ task });
         }
 
