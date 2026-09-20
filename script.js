@@ -812,7 +812,7 @@ function closeAddEmployeeModal() {
 }
 
 // ================= TASK MANAGEMENT =================
-async async function handleAssignTask(e) {
+async function handleAssignTask(e) {
     if (e) e.preventDefault();
 
     const assigneeInput = document.getElementById('taskAssignee');
