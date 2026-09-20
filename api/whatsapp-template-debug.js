@@ -22,8 +22,11 @@ module.exports = async function handler(req, res) {
 
     const headers = { Authorization: `Bearer ${token}` };
 
+    // The phone-number object does not expose a whatsapp_business_account
+    // field in the current Graph API. Query only fields supported by the
+    // phone-number endpoint.
     const phoneResponse = await fetch(
-      `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}?fields=id,display_phone_number,verified_name,whatsapp_business_account`,
+      `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}?fields=id,display_phone_number,verified_name,platform_type`,
       { headers }
     );
     const phoneData = await phoneResponse.json();
@@ -36,12 +39,20 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const wabaId = phoneData?.whatsapp_business_account?.id || null;
+    // Template management is scoped to the WABA. Prefer an explicitly
+    // configured WABA ID; do not guess it from the phone-number object.
+    const wabaId = String(process.env.WHATSAPP_BUSINESS_ACCOUNT_ID || '').trim();
+
     if (!wabaId) {
-      return res.status(502).json({
-        message: 'Meta did not return a WhatsApp Business Account ID.',
+      return res.status(200).json({
+        verified: false,
+        reason: 'WHATSAPP_BUSINESS_ACCOUNT_ID is not configured.',
         phoneNumberId: PHONE_NUMBER_ID,
-        displayPhoneNumber: phoneData?.display_phone_number || null
+        displayPhoneNumber: phoneData?.display_phone_number || null,
+        verifiedName: phoneData?.verified_name || null,
+        platformType: phoneData?.platform_type || null,
+        templateName: TEMPLATE_NAME,
+        templates: []
       });
     }
 
@@ -72,9 +83,11 @@ module.exports = async function handler(req, res) {
       }));
 
     return res.status(200).json({
+      verified: matches.length > 0,
       phoneNumberId: PHONE_NUMBER_ID,
       displayPhoneNumber: phoneData?.display_phone_number || null,
       verifiedName: phoneData?.verified_name || null,
+      platformType: phoneData?.platform_type || null,
       wabaId,
       templateName: TEMPLATE_NAME,
       templates: matches
