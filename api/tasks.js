@@ -6,7 +6,7 @@ const { sendWhatsAppTemplate } = require('./_whatsapp');
 const TASK_PATH = 'data/assigned-tasks.json';
 const EMPLOYEE_PATH = 'employees.json';
 const TASK_ASSIGNMENT_TEMPLATE = 'task_assignment';
-const TASK_ASSIGNMENT_LANGUAGE = 'en_US';
+const TASK_ASSIGNMENT_LANGUAGE = 'en';
 const DEPLOYMENT_VERSION = 'whatsapp-debug-v4-20260919';
 
 async function readTasks() {
