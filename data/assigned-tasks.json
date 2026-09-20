@@ -16,7 +16,17 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": []
+      "remindersSent": [],
+      "whatsappMessageId": null,
+      "whatsappStatus": "failed",
+      "whatsappStatusAt": "2026-09-20T05:21:41.856Z",
+      "whatsappError": "(#132001) Template name does not exist in the translation",
+      "whatsappErrorCode": 132001,
+      "whatsappErrorType": "OAuthException",
+      "whatsappErrorData": {
+        "messaging_product": "whatsapp",
+        "details": "template name (task_assignment) does not exist in en_US"
+      }
     }
   ]
 }
