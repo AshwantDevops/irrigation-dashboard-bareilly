@@ -812,7 +812,7 @@ function closeAddEmployeeModal() {
 }
 
 // ================= TASK MANAGEMENT =================
-async function handleAssignTask(e) {
+async async function handleAssignTask(e) {
     if (e) e.preventDefault();
 
     const assigneeInput = document.getElementById('taskAssignee');
@@ -823,14 +823,19 @@ async function handleAssignTask(e) {
 
     const assignee = assigneeInput.value.trim();
     const desc = descInput.value.trim();
+    const deadlineValue = deadlineInput.value.trim();
 
-    // Convert the user's local deadline date/time to an ISO timestamp.
-    // The backend stores UTC, while the UI displays the user's local time.
-    const deadlineDate = deadlineInput.valueAsDate;
-    const deadline = deadlineDate ? deadlineDate.toISOString() : '';
-
-    if (!assignee || !deadline || !desc) {
+    if (!assignee || !deadlineValue || !desc) {
         showToast("Please fill all task fields!", "error");
+        return;
+    }
+
+    // Read the datetime-local value directly, then convert it to ISO.
+    // This avoids relying on valueAsDate/browser-specific handling.
+    const deadlineDate = new Date(deadlineValue);
+
+    if (Number.isNaN(deadlineDate.getTime())) {
+        showToast("Please enter a valid deadline.", "error");
         return;
     }
 
@@ -838,6 +843,8 @@ async function handleAssignTask(e) {
         showToast("Deadline must be in the future.", "error");
         return;
     }
+
+    const deadline = deadlineDate.toISOString();
 
     let foundEmp = employees.find(
         emp => emp.name && emp.name.trim().toLowerCase() === assignee.toLowerCase()
