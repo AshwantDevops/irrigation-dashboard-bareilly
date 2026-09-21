@@ -95,7 +95,18 @@
       "whatsappError": null,
       "whatsappErrorCode": null,
       "whatsappErrorType": null,
-      "whatsappErrorData": null
+      "whatsappErrorData": null,
+      "reminderStatus": "failed",
+      "reminderStatusAt": "2026-09-21T16:35:34.961Z",
+      "reminderMilestone": "M80",
+      "reminderMessageId": null,
+      "reminderError": "(#132001) Template name does not exist in the translation",
+      "reminderErrorCode": 132001,
+      "reminderErrorType": "OAuthException",
+      "reminderErrorData": {
+        "messaging_product": "whatsapp",
+        "details": "template name (task_reminder) does not exist in en"
+      }
     }
   ]
 }
