@@ -88,7 +88,14 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": []
+      "remindersSent": [],
+      "whatsappMessageId": "wamid.HBgMOTE5NTg0MDAxMDEwFQIAERgSM0REOTU5RDkyOEFBQThENURCAA==",
+      "whatsappStatus": "accepted",
+      "whatsappStatusAt": "2026-09-21T13:55:34.990Z",
+      "whatsappError": null,
+      "whatsappErrorCode": null,
+      "whatsappErrorType": null,
+      "whatsappErrorData": null
     }
   ]
 }
