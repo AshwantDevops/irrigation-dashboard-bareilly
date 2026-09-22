@@ -97,7 +97,7 @@
       "whatsappErrorType": null,
       "whatsappErrorData": null,
       "reminderStatus": "failed",
-      "reminderStatusAt": "2026-09-22T19:54:43.422Z",
+      "reminderStatusAt": "2026-09-22T22:47:26.307Z",
       "reminderMilestone": "M80",
       "reminderMessageId": null,
       "reminderError": "(#132001) Template name does not exist in the translation",
