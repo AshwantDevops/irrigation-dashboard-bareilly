@@ -65,11 +65,21 @@ module.exports = async function handler(req, res) {
     // that value before validating it.
     const tokenMatch = String(rawPublicToken).match(/^[a-f0-9]{36}/i);
     const publicToken = tokenMatch ? tokenMatch[0] : String(rawPublicToken).trim();
-    const publicRequest = Boolean(publicToken);
     let user = null;
 
-    if (!publicRequest) {
+    // Task pages may be viewed with only the task token. Any mutation,
+    // however, always requires Google authentication and is checked against
+    // the employee assigned to that task.
+    if (req.method !== 'GET') {
       user = await authenticate(req);
+    } else if (req.headers.authorization) {
+      try {
+        user = await authenticate(req);
+      } catch (authError) {
+        // A stale/expired browser credential should not prevent public task
+        // viewing. The response will simply be read-only.
+        user = null;
+      }
     }
 
     const { current, tasks } = await readTasks();
@@ -83,7 +93,24 @@ module.exports = async function handler(req, res) {
 
         // A public task page may request a task using its public token.
         if (publicToken && publicToken === task.publicToken) {
-          return res.status(200).json({ task });
+          let canEdit = false;
+
+          if (user) {
+            const employees = await readEmployees();
+            const assignedEmployee = employees.find(
+              employee => Number(employee.id) === Number(task.assigneeId)
+            );
+
+            canEdit = Boolean(
+              user.isAdmin ||
+              (
+                assignedEmployee &&
+                String(assignedEmployee.email || '').trim().toLowerCase() === user.email
+              )
+            );
+          }
+
+          return res.status(200).json({ task, canEdit });
         }
 
         return res.status(403).json({ message: 'Invalid task token.' });
@@ -312,18 +339,54 @@ module.exports = async function handler(req, res) {
 
       const task = tasks[index];
 
-      // Dashboard users authenticate with Google. Public task page uses the per-task token.
+      // Every task update requires both the per-task token and an authenticated
+      // Google account. Only the assigned employee or an administrator may
+      // modify the task. This prevents one employee from changing another
+      // employee's task even if they know the task URL.
       const tokenAllowed = body.token && body.token === task.publicToken;
-      if (!tokenAllowed && !user?.email) {
-        return res.status(403).json({ message: 'Not authorized.' });
+      if (!tokenAllowed) {
+        return res.status(403).json({ message: 'Invalid task token.' });
+      }
+
+      const employees = await readEmployees();
+      const assignedEmployee = employees.find(
+        employee => Number(employee.id) === Number(task.assigneeId)
+      );
+
+      const isAssignedEmployee = Boolean(
+        assignedEmployee &&
+        String(assignedEmployee.email || '').trim().toLowerCase() === user.email
+      );
+
+      if (!isAssignedEmployee && !user.isAdmin) {
+        return res.status(403).json({
+          message: 'Only the employee assigned to this task can modify it.'
+        });
       }
 
       if (body.action === 'complete') {
         task.done = true;
         task.status = 'Completed';
         task.completedAt = new Date().toISOString();
+      } else if (body.action === 'milestone') {
+        const allowedMilestones = new Set(['m80', 'm50', 'm10']);
+        if (!allowedMilestones.has(body.milestone)) {
+          return res.status(400).json({
+            message: 'Invalid milestone. Use m80, m50 or m10.'
+          });
+        }
+
+        task[body.milestone] = true;
+
+        if (task.m80 && task.m50 && task.m10) {
+          task.status = 'Completed';
+        } else {
+          task.status = 'In Progress';
+        }
       } else {
-        Object.assign(task, body);
+        return res.status(400).json({
+          message: 'Unsupported task update action.'
+        });
       }
 
       const updated = [...tasks];
