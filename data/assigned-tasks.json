@@ -88,7 +88,9 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": [],
+      "remindersSent": [
+        "M80"
+      ],
       "whatsappMessageId": "wamid.HBgMOTE5NTg0MDAxMDEwFQIAERgSM0REOTU5RDkyOEFBQThENURCAA==",
       "whatsappStatus": "accepted",
       "whatsappStatusAt": "2026-09-21T13:55:34.990Z",
@@ -96,17 +98,14 @@
       "whatsappErrorCode": null,
       "whatsappErrorType": null,
       "whatsappErrorData": null,
-      "reminderStatus": "failed",
-      "reminderStatusAt": "2026-09-23T00:58:53.056Z",
+      "reminderStatus": "accepted",
+      "reminderStatusAt": "2026-09-23T04:18:20.975Z",
       "reminderMilestone": "M80",
-      "reminderMessageId": null,
-      "reminderError": "(#132001) Template name does not exist in the translation",
-      "reminderErrorCode": 132001,
-      "reminderErrorType": "OAuthException",
-      "reminderErrorData": {
-        "messaging_product": "whatsapp",
-        "details": "template name (task_reminder) does not exist in en"
-      }
+      "reminderMessageId": "wamid.HBgMOTE5NTg0MDAxMDEwFQIAERgSMjk4MDZCOTlFQ0ExRjNGRjA2AA==",
+      "reminderError": null,
+      "reminderErrorCode": null,
+      "reminderErrorType": null,
+      "reminderErrorData": null
     }
   ]
 }
