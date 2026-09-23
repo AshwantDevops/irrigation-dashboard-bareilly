@@ -2,10 +2,11 @@ name: Irrigation Task Reminders
 
 on:
   # Two offset schedules provide a second opportunity if one scheduled event is delayed or dropped.
-  # GitHub notes scheduled workflows can be delayed during high Actions load.
+  # The minute offsets are intentionally away from the start of the hour.
+  # Updating the cron also reactivates a scheduled workflow if GitHub has disabled it.
   schedule:
-    - cron: '2,12,22,32,42,52 * * * *'
-    - cron: '7,17,27,37,47,57 * * * *'
+    - cron: '3,13,23,33,43,53 * * * *'
+    - cron: '8,18,28,38,48,58 * * * *'
   workflow_dispatch:
 
 jobs:
