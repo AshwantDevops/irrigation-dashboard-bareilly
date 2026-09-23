@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Assigned Task - Irrigation Division Bareilly</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script async defer src="https://accounts.google.com/gsi/client"></script>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-900">
   <main class="max-w-xl mx-auto p-5 md:p-8">
@@ -36,38 +37,85 @@
           <p class="text-xs text-slate-500 uppercase font-bold">Status</p>
           <p id="status" class="font-bold"></p>
         </div>
-        <button id="doneButton" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl">
-          Mark Task Completed
-        </button>
+
+        <div id="accessMessage" class="hidden rounded-2xl border p-3 text-sm"></div>
+
+        <div id="signInSection" class="hidden rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <p class="font-bold text-blue-900">Sign in to update this task</p>
+          <p class="text-xs text-blue-800 mt-1 mb-3">
+            Only the employee assigned to this task can update its progress or mark it completed.
+          </p>
+          <div id="googleSignInButton"></div>
+        </div>
+
+        <div id="controls" class="hidden space-y-3">
+          <p class="text-xs text-slate-500 uppercase font-bold">Update Progress</p>
+          <div class="grid grid-cols-3 gap-2">
+            <button data-milestone="m80" class="milestoneButton bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl">
+              Mark 80%
+            </button>
+            <button data-milestone="m50" class="milestoneButton bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl">
+              Mark 50%
+            </button>
+            <button data-milestone="m10" class="milestoneButton bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl">
+              Mark 10%
+            </button>
+          </div>
+
+          <button id="doneButton" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl">
+            Mark Task Completed
+          </button>
+        </div>
       </div>
     </section>
   </main>
 
 <script>
+const GOOGLE_CLIENT_ID = '592948920401-cfci8r4fea840h2o3spgbkimvf9ifgbg.apps.googleusercontent.com';
 const params = new URLSearchParams(location.search);
 const id = params.get('id');
 
-// New WhatsApp links keep the task token in the URL fragment so text
-// accidentally appended to the clickable URL cannot corrupt the query string.
-// Keep backward compatibility with older links that used ?token=...
 const hashParams = new URLSearchParams((location.hash || '').replace(/^#/, ''));
 const rawToken = hashParams.get('token') || params.get('token') || '';
 const tokenMatch = rawToken.match(/^[a-f0-9]{36}/i);
 const token = tokenMatch ? tokenMatch[0] : rawToken.trim();
 
+let currentTask = null;
+let canEdit = false;
+let googleInitialized = false;
+
 function show(message) {
   document.getElementById('message').textContent = message;
+  document.getElementById('message').classList.remove('hidden');
 }
 
-async function loadTask() {
-  if (!id || !token) return show('Invalid task link.');
+function getCredential() {
+  return sessionStorage.getItem('irr_google_credential') || '';
+}
 
-  const response = await fetch(`/api/tasks?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`);
-  const data = await response.json();
+function setAccessMessage(text, type = 'info') {
+  const element = document.getElementById('accessMessage');
+  if (!text) {
+    element.classList.add('hidden');
+    return;
+  }
 
-  if (!response.ok) return show(data.message || 'Unable to load task.');
+  element.textContent = text;
+  element.className = 'rounded-2xl border p-3 text-sm';
+  if (type === 'error') {
+    element.classList.add('border-red-200', 'bg-red-50', 'text-red-800');
+  } else if (type === 'success') {
+    element.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-800');
+  } else {
+    element.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-700');
+  }
+  element.classList.remove('hidden');
+}
 
-  const task = data.task;
+function renderTask(task, editable) {
+  currentTask = task;
+  canEdit = !!editable;
+
   document.getElementById('message').classList.add('hidden');
   document.getElementById('taskCard').classList.remove('hidden');
   document.getElementById('assignee').textContent = task.assignee;
@@ -75,30 +123,149 @@ async function loadTask() {
   document.getElementById('deadline').textContent = task.deadline;
   document.getElementById('status').textContent = task.done ? 'Completed' : (task.status || 'Pending');
 
+  const signInSection = document.getElementById('signInSection');
+  const controls = document.getElementById('controls');
+
+  if (canEdit) {
+    signInSection.classList.add('hidden');
+    controls.classList.remove('hidden');
+    setAccessMessage('You are authorized to update this task.', 'success');
+  } else if (getCredential()) {
+    signInSection.classList.add('hidden');
+    controls.classList.add('hidden');
+    setAccessMessage(`This task is assigned to ${task.assignee}. Your account is not authorized to change it.`, 'error');
+  } else {
+    signInSection.classList.remove('hidden');
+    controls.classList.add('hidden');
+    setAccessMessage('You can view this task. Sign in with the Google account assigned to this task to make changes.', 'info');
+    initializeGoogleSignIn();
+  }
+
+  updateMilestoneButtons(task);
+  updateDoneButton(task);
+}
+
+function updateMilestoneButtons(task) {
+  document.querySelectorAll('.milestoneButton').forEach(button => {
+    const key = button.dataset.milestone;
+    const completed = !!task[key];
+    button.disabled = !canEdit || completed || task.done;
+    button.textContent = completed ? `${key.slice(1).toUpperCase()}% Marked ✓` : `Mark ${key.slice(1)}%`;
+    button.className = completed
+      ? 'milestoneButton bg-emerald-600 text-white font-bold py-3 rounded-2xl cursor-not-allowed'
+      : 'milestoneButton bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-2xl disabled:bg-slate-400 disabled:cursor-not-allowed';
+  });
+}
+
+function updateDoneButton(task) {
   const button = document.getElementById('doneButton');
+  button.disabled = !canEdit || task.done;
   if (task.done) {
-    button.disabled = true;
     button.textContent = 'Task Already Completed';
     button.className = 'w-full bg-slate-400 text-white font-bold py-3 rounded-2xl cursor-not-allowed';
   } else {
-    button.onclick = async () => {
-      button.disabled = true;
-      const result = await fetch(`/api/tasks?id=${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'complete', token })
-      });
-      const payload = await result.json();
-      if (!result.ok) {
-        button.disabled = false;
-        return show(payload.message || 'Unable to complete task.');
-      }
-      document.getElementById('status').textContent = 'Completed';
-      button.textContent = 'Task Completed ✓';
-      button.className = 'w-full bg-emerald-800 text-white font-bold py-3 rounded-2xl';
-    };
+    button.textContent = 'Mark Task Completed';
+    button.className = 'w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-2xl disabled:bg-slate-400 disabled:cursor-not-allowed';
   }
 }
+
+function initializeGoogleSignIn() {
+  if (googleInitialized) return;
+  if (!window.google || !google.accounts || !google.accounts.id) {
+    setTimeout(initializeGoogleSignIn, 250);
+    return;
+  }
+
+  googleInitialized = true;
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleTaskGoogleCredential,
+    auto_select: false
+  });
+
+  const container = document.getElementById('googleSignInButton');
+  container.innerHTML = '';
+  google.accounts.id.renderButton(container, {
+    type: 'standard',
+    theme: 'outline',
+    size: 'large',
+    text: 'signin_with',
+    shape: 'rectangular',
+    width: 300
+  });
+}
+
+async function handleTaskGoogleCredential(response) {
+  if (!response || !response.credential) {
+    setAccessMessage('Google sign-in did not return a valid credential.', 'error');
+    return;
+  }
+
+  sessionStorage.setItem('irr_google_credential', response.credential);
+  await loadTask();
+}
+
+async function loadTask() {
+  if (!id || !token) return show('Invalid task link.');
+
+  const headers = {};
+  const credential = getCredential();
+  if (credential) headers.Authorization = `Bearer ${credential}`;
+
+  let response = await fetch(`/api/tasks?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`, { headers });
+
+  if (response.status === 401 && credential) {
+    sessionStorage.removeItem('irr_google_credential');
+    response = await fetch(`/api/tasks?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`);
+  }
+
+  const data = await response.json();
+
+  if (!response.ok) return show(data.message || 'Unable to load task.');
+
+  renderTask(data.task, !!data.canEdit);
+}
+
+async function updateTask(action, milestone = null) {
+  if (!canEdit || !currentTask) return;
+
+  const body = { action, token };
+  if (milestone) body.milestone = milestone;
+
+  document.querySelectorAll('.milestoneButton, #doneButton').forEach(button => {
+    button.disabled = true;
+  });
+
+  try {
+    const credential = getCredential();
+    if (!credential) throw new Error('Google authentication is required.');
+
+    const result = await fetch(`/api/tasks?id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${credential}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    const payload = await result.json();
+    if (!result.ok) throw new Error(payload.message || 'Unable to update task.');
+
+    renderTask(payload.task, true);
+  } catch (error) {
+    console.error(error);
+    setAccessMessage(error.message || 'Unable to update task.', 'error');
+    updateMilestoneButtons(currentTask);
+    updateDoneButton(currentTask);
+  }
+}
+
+document.querySelectorAll('.milestoneButton').forEach(button => {
+  button.addEventListener('click', () => updateTask('milestone', button.dataset.milestone));
+});
+
+document.getElementById('doneButton').addEventListener('click', () => updateTask('complete'));
 
 loadTask().catch(error => {
   console.error(error);
