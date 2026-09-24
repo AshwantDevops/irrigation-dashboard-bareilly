@@ -50,7 +50,7 @@ function taskLink(req, task) {
   const host = req.headers['x-forwarded-host'] || req.headers.host;
   const baseUrl = process.env.APP_BASE_URL || `${forwarded}://${host}`;
 
-  return `${baseUrl}/task.html?id=${encodeURIComponent(task.id)}&token=${encodeURIComponent(task.publicToken)}&wa=1`;
+  return `${baseUrl}/?wa=1`;
 }
 
 module.exports = async function handler(req, res) {
