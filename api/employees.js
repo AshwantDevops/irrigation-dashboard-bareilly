@@ -10,6 +10,16 @@ function cleanPhone(phone) {
   return value;
 }
 
+function hasAdminProfile(employees, email) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return false;
+
+  return employees.some(employee =>
+    String(employee.email || '').trim().toLowerCase() === normalizedEmail &&
+    String(employee.post || '').trim().toLowerCase() === 'admin'
+  );
+}
+
 async function syncWhatsAppUser(employee, remove = false) {
   const waFile = await getJsonFile(WA_PATH);
   const users = { ...(waFile.data?.users || {}) };
@@ -41,15 +51,17 @@ module.exports = async function handler(req, res) {
       ? current.data
       : (current.data?.employees || []);
 
+    const canManageEmployees = !!auth.isAdmin || hasAdminProfile(employees, auth.email);
+
     if (req.method === 'GET') {
       return res.status(200).json({
         employees,
-        canManageEmployees: !!auth.isAdmin
+        canManageEmployees
       });
     }
 
     if (req.method === 'POST') {
-      if (!auth.isAdmin) {
+      if (!canManageEmployees) {
         return res.status(403).json({
           message: 'Administrator access is required to modify employee information.'
         });
@@ -106,7 +118,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
-      if (!auth.isAdmin) {
+      if (!canManageEmployees) {
         return res.status(403).json({
           message: 'Administrator access is required to modify employee information.'
         });
