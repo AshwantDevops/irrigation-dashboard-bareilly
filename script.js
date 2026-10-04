@@ -1208,7 +1208,7 @@ function renderMasterSchedule() {
 
         const adminActions = canManageEmployees
             ? `
-                <button onclick="editMasterTask(${item.id})" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded-lg font-medium transition" title="Edit Master Schedule">✏️ Edit</button>
+                <button onclick="editMasterTask(${item.id})" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded-lg font-medium transition inline-flex items-center justify-center gap-1 whitespace-nowrap" title="Edit Master Schedule">✎ Edit</button>
                 <button onclick="deleteMasterTask(${item.id})" class="px-2.5 py-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg font-medium transition">Delete</button>
             `
             : '';
