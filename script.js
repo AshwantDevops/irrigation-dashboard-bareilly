@@ -1191,11 +1191,28 @@ function clearChat() {
 // ================= MASTER SCHEDULE =================
 function renderMasterSchedule() {
     const tbody = document.getElementById('masterScheduleTableBody');
+    const form = document.getElementById('addMasterScheduleForm');
     if (!tbody) return;
+
+    // Only Admin profiles can add, edit, or delete master schedule entries.
+    // Assign remains available to all signed-in users.
+    if (form) {
+        form.classList.toggle('hidden', !canManageEmployees);
+    }
 
     tbody.innerHTML = '';
 
     masterSchedule.forEach((item, index) => {
+        const escapedWork = String(item.work || '').replace(/'/g, "\\'");
+        const escapedDeadline = String(item.deadline || '').replace(/'/g, "\\'");
+
+        const adminActions = canManageEmployees
+            ? `
+                <button onclick="editMasterTask(${item.id})" class="px-2.5 py-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 rounded-lg font-medium transition" title="Edit Master Schedule">✏️ Edit</button>
+                <button onclick="deleteMasterTask(${item.id})" class="px-2.5 py-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg font-medium transition">Delete</button>
+            `
+            : '';
+
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-800/40 transition text-xs border-b border-slate-800/60";
 
@@ -1204,8 +1221,8 @@ function renderMasterSchedule() {
             <td class="p-3.5 font-semibold text-slate-200">${item.work}</td>
             <td class="p-3.5 text-cyan-400">${item.deadline}</td>
             <td class="p-3.5 text-center flex items-center justify-center gap-2">
-                <button onclick="assignFromMaster('${item.work.replace(/'/g, "\\'")}', '${item.deadline.replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600 hover:text-white border border-cyan-500/30 rounded-lg font-medium transition">Assign</button>
-                <button onclick="deleteMasterTask(${item.id})" class="px-2.5 py-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 rounded-lg font-medium transition">Delete</button>
+                <button onclick="assignFromMaster('${escapedWork}', '${escapedDeadline}')" class="px-2.5 py-1 bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600 hover:text-white border border-cyan-500/30 rounded-lg font-medium transition">Assign</button>
+                ${adminActions}
             </td>
         `;
 
@@ -1215,6 +1232,11 @@ function renderMasterSchedule() {
 
 function handleAddMasterSchedule(event) {
     if (event) event.preventDefault();
+
+    if (!canManageEmployees) {
+        showToast("Administrator access is required to modify the Master Schedule.", "error");
+        return;
+    }
 
     const workInput = document.getElementById('newMasterWork');
     const deadlineInput = document.getElementById('newMasterDeadline');
@@ -1242,8 +1264,45 @@ function handleAddMasterSchedule(event) {
     renderAnalyticsCharts();
 }
 
+function editMasterTask(id) {
+    if (!canManageEmployees) {
+        showToast("Administrator access is required to modify the Master Schedule.", "error");
+        return;
+    }
+
+    const item = masterSchedule.find(entry => Number(entry.id) === Number(id));
+    if (!item) return;
+
+    const work = prompt("Name of Work / Compliance Task:", item.work);
+    if (work === null) return;
+
+    const deadline = prompt("Deadline / Frequency:", item.deadline);
+    if (deadline === null) return;
+
+    const workText = work.trim();
+    const deadlineText = deadline.trim();
+
+    if (!workText || !deadlineText) {
+        showToast("Work name and deadline/frequency are required.", "error");
+        return;
+    }
+
+    item.work = workText;
+    item.deadline = deadlineText;
+
+    saveData();
+    renderMasterSchedule();
+    renderAnalyticsCharts();
+    showToast("Master Schedule updated successfully.", "success");
+}
+
 function deleteMasterTask(id) {
-    masterSchedule = masterSchedule.filter(item => item.id !== id);
+    if (!canManageEmployees) {
+        showToast("Administrator access is required to modify the Master Schedule.", "error");
+        return;
+    }
+
+    masterSchedule = masterSchedule.filter(item => Number(item.id) !== Number(id));
     saveData();
     renderMasterSchedule();
     renderAnalyticsCharts();
