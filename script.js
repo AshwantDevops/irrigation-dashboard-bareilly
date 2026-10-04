@@ -1189,6 +1189,245 @@ function clearChat() {
 }
 
 // ================= MASTER SCHEDULE =================
+function populateQuickAssignOptions() {
+    const employeeSelects = [
+        document.getElementById('weeklyQuickAssignee'),
+        document.getElementById('monthlyQuickAssignee')
+    ];
+
+    employeeSelects.forEach(select => {
+        if (!select) return;
+
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Select employee</option>';
+
+        employees.forEach(emp => {
+            if (!emp || !emp.name) return;
+
+            const option = document.createElement('option');
+            option.value = emp.id;
+            option.textContent = emp.name;
+            select.appendChild(option);
+        });
+
+        if (currentValue && employees.some(emp => String(emp.id) === String(currentValue))) {
+            select.value = currentValue;
+        }
+    });
+
+    const weeklySelect = document.getElementById('weeklyQuickTask');
+    const monthlySelect = document.getElementById('monthlyQuickTask');
+
+    const populateTaskSelect = (select, items, placeholder) => {
+        if (!select) return;
+
+        const currentValue = select.value;
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+
+        items.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.id;
+            option.textContent = `${item.work} — ${item.deadline}`;
+            select.appendChild(option);
+        });
+
+        if (currentValue && items.some(item => String(item.id) === String(currentValue))) {
+            select.value = currentValue;
+        }
+    };
+
+    const weeklyItems = masterSchedule.filter(item =>
+        /weekly|week/i.test(String(item.deadline || ''))
+    );
+
+    const monthlyItems = masterSchedule.filter(item =>
+        /month|monthly/i.test(String(item.deadline || ''))
+    );
+
+    populateTaskSelect(weeklySelect, weeklyItems, 'Select weekly work');
+    populateTaskSelect(monthlySelect, monthlyItems, 'Select monthly work');
+}
+
+function copyCurrentTime(targetDate, sourceDate) {
+    targetDate.setHours(
+        sourceDate.getHours(),
+        sourceDate.getMinutes(),
+        sourceDate.getSeconds(),
+        sourceDate.getMilliseconds()
+    );
+    return targetDate;
+}
+
+function getNextMonthlyDate(deadlineRule, assignedAt) {
+    const rule = String(deadlineRule || '').trim();
+    const lowerRule = rule.toLowerCase();
+    const base = new Date(assignedAt);
+
+    const ordinalMatch = lowerRule.match(
+        /\\b(first|second|third|fourth|last)\\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\\b/
+    );
+
+    const weekdays = {
+        sunday: 0,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6
+    };
+
+    if (ordinalMatch) {
+        const ordinalName = ordinalMatch[1];
+        const weekday = weekdays[ordinalMatch[2]];
+        const ordinalMap = { first: 1, second: 2, third: 3, fourth: 4 };
+
+        const buildOrdinalDate = (year, month) => {
+            if (ordinalName === 'last') {
+                const date = new Date(year, month + 1, 0);
+                while (date.getDay() !== weekday) date.setDate(date.getDate() - 1);
+                return date;
+            }
+
+            const ordinal = ordinalMap[ordinalName];
+            const date = new Date(year, month, 1);
+            const offset = (weekday - date.getDay() + 7) % 7;
+            date.setDate(1 + offset + ((ordinal - 1) * 7));
+
+            if (date.getMonth() !== month) return null;
+            return date;
+        };
+
+        let candidate = buildOrdinalDate(base.getFullYear(), base.getMonth());
+        copyCurrentTime(candidate, base);
+
+        if (!candidate || candidate.getTime() <= base.getTime()) {
+            const nextMonth = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+            candidate = buildOrdinalDate(nextMonth.getFullYear(), nextMonth.getMonth());
+            copyCurrentTime(candidate, base);
+        }
+
+        return candidate;
+    }
+
+    const dayMatch = lowerRule.match(/\\b(\\d{1,2})(?:st|nd|rd|th)?\\b/);
+    if (dayMatch) {
+        const day = Number(dayMatch[1]);
+
+        const buildDayDate = (year, month) => {
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const date = new Date(year, month, Math.min(day, lastDay));
+            copyCurrentTime(date, base);
+            return date;
+        };
+
+        let candidate = buildDayDate(base.getFullYear(), base.getMonth());
+
+        if (candidate.getTime() <= base.getTime()) {
+            candidate = buildDayDate(base.getFullYear(), base.getMonth() + 1);
+        }
+
+        return candidate;
+    }
+
+    // Fallback for a generic monthly task: one calendar month from assignment.
+    const candidate = new Date(base);
+    candidate.setMonth(candidate.getMonth() + 1);
+    return candidate;
+}
+
+function calculateQuickScheduleDeadline(type, rule) {
+    const assignedAt = new Date();
+
+    if (type === 'weekly') {
+        const deadline = new Date(assignedAt);
+        deadline.setDate(deadline.getDate() + 7);
+        return deadline;
+    }
+
+    return getNextMonthlyDate(rule, assignedAt);
+}
+
+async function quickAssignScheduledTask(type) {
+    const assigneeSelect = document.getElementById(
+        type === 'weekly' ? 'weeklyQuickAssignee' : 'monthlyQuickAssignee'
+    );
+    const taskSelect = document.getElementById(
+        type === 'weekly' ? 'weeklyQuickTask' : 'monthlyQuickTask'
+    );
+
+    if (!assigneeSelect || !taskSelect) return;
+
+    const employeeId = assigneeSelect.value;
+    const masterTaskId = taskSelect.value;
+
+    if (!employeeId || !masterTaskId) {
+        showToast(`Please select an employee and ${type} work.`, "error");
+        return;
+    }
+
+    const employee = employees.find(emp => String(emp.id) === String(employeeId));
+    const masterTask = masterSchedule.find(item => String(item.id) === String(masterTaskId));
+
+    if (!employee || !masterTask) {
+        showToast("Unable to find the selected employee or scheduled work.", "error");
+        return;
+    }
+
+    const deadlineDate = calculateQuickScheduleDeadline(type, masterTask.deadline);
+    if (!(deadlineDate instanceof Date) || Number.isNaN(deadlineDate.getTime())) {
+        showToast("Unable to calculate the task deadline.", "error");
+        return;
+    }
+
+    if (deadlineDate.getTime() <= Date.now()) {
+        showToast("The calculated deadline is not in the future.", "error");
+        return;
+    }
+
+    try {
+        const response = await apiRequest('/api/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                assigneeId: employee.id,
+                assignee: employee.name,
+                deadline: deadlineDate.toISOString(),
+                desc: masterTask.work
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Unable to assign task.');
+
+        tasks = result.tasks || tasks;
+        renderTasks();
+        renderAccountTab();
+
+        assigneeSelect.value = '';
+        taskSelect.value = '';
+
+        if (result.whatsappSent === false) {
+            const reason = result.whatsappError
+                ? ` WhatsApp: ${result.whatsappError}`
+                : '';
+            showToast(`Task assigned, but WhatsApp notification was not sent.${reason}`, "error");
+            console.error("WhatsApp notification failed:", result.whatsappError || "Unknown error");
+        } else {
+            const status = result.whatsappStatus || 'accepted';
+            if (status === 'delivered') {
+                showToast(`Task assigned and WhatsApp notification delivered. Deadline: ${formatTaskDeadline(deadlineDate.toISOString())}`, "success");
+            } else if (status === 'read') {
+                showToast(`Task assigned and WhatsApp notification read. Deadline: ${formatTaskDeadline(deadlineDate.toISOString())}`, "success");
+            } else {
+                showToast(`Task assigned. WhatsApp request accepted; deadline: ${formatTaskDeadline(deadlineDate.toISOString())}`, "success");
+            }
+        }
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to assign scheduled task.", "error");
+    }
+}
+
 function renderMasterSchedule() {
     const tbody = document.getElementById('masterScheduleTableBody');
     const form = document.getElementById('addMasterScheduleForm');
@@ -1199,6 +1438,8 @@ function renderMasterSchedule() {
     if (form) {
         form.classList.toggle('hidden', !canManageEmployees);
     }
+
+    populateQuickAssignOptions();
 
     tbody.innerHTML = '';
 
