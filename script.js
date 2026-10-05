@@ -166,7 +166,11 @@ async function loadMasterSchedule() {
     }
 
     try {
-        const response = await fetch('./tasks.json', { cache: 'no-store' });
+        // Master Schedule is persisted through the server so Admin edits
+        // survive browser refreshes and are available to every user.
+        const response = await apiRequest('/api/master-schedule', {
+            method: 'GET'
+        });
 
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -179,13 +183,35 @@ async function loadMasterSchedule() {
             : (data?.tasks || []);
 
         masterScheduleLoaded = true;
-        console.log(`Loaded ${masterSchedule.length} master tasks from tasks.json`);
+        console.log(`Loaded ${masterSchedule.length} master tasks from Master Schedule API`);
 
         return masterSchedule;
     } catch (error) {
-        console.error('Unable to load tasks.json:', error);
-        masterSchedule = [];
-        return masterSchedule;
+        console.error('Unable to load Master Schedule API:', error);
+
+        // Backward-compatible fallback for the initial static schedule.
+        try {
+            const response = await fetch('./tasks.json', { cache: 'no-store' });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            masterSchedule = Array.isArray(data)
+                ? data
+                : (data?.tasks || []);
+
+            masterScheduleLoaded = true;
+            console.log(`Loaded ${masterSchedule.length} master tasks from tasks.json fallback`);
+
+            return masterSchedule;
+        } catch (fallbackError) {
+            console.error('Unable to load tasks.json fallback:', fallbackError);
+            masterSchedule = [];
+            return masterSchedule;
+        }
     }
 }
 
@@ -1471,7 +1497,7 @@ function renderMasterSchedule() {
     });
 }
 
-function handleAddMasterSchedule(event) {
+async function handleAddMasterSchedule(event) {
     if (event) event.preventDefault();
 
     if (!canManageEmployees) {
@@ -1489,23 +1515,34 @@ function handleAddMasterSchedule(event) {
 
     if (!workText || !deadlineText) return;
 
-    const newItem = {
-        id: Date.now(),
-        work: workText,
-        deadline: deadlineText
-    };
+    try {
+        const response = await apiRequest('/api/master-schedule', {
+            method: 'POST',
+            body: JSON.stringify({
+                work: workText,
+                deadline: deadlineText
+            })
+        });
 
-    masterSchedule.push(newItem);
-    saveData();
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || 'Unable to add Master Schedule task.');
+        }
 
-    workInput.value = '';
-    deadlineInput.value = '';
+        masterSchedule = result.tasks || masterSchedule;
+        workInput.value = '';
+        deadlineInput.value = '';
 
-    renderMasterSchedule();
-    renderAnalyticsCharts();
+        renderMasterSchedule();
+        renderAnalyticsCharts();
+        showToast("Master Schedule task added successfully.", "success");
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to save Master Schedule task.", "error");
+    }
 }
 
-function editMasterTask(id) {
+async function editMasterTask(id) {
     if (!canManageEmployees) {
         showToast("Administrator access is required to modify the Master Schedule.", "error");
         return;
@@ -1528,25 +1565,55 @@ function editMasterTask(id) {
         return;
     }
 
-    item.work = workText;
-    item.deadline = deadlineText;
+    try {
+        const response = await apiRequest('/api/master-schedule', {
+            method: 'PATCH',
+            body: JSON.stringify({
+                id,
+                work: workText,
+                deadline: deadlineText
+            })
+        });
 
-    saveData();
-    renderMasterSchedule();
-    renderAnalyticsCharts();
-    showToast("Master Schedule updated successfully.", "success");
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || 'Unable to update Master Schedule task.');
+        }
+
+        masterSchedule = result.tasks || masterSchedule;
+        renderMasterSchedule();
+        renderAnalyticsCharts();
+        showToast("Master Schedule updated successfully.", "success");
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to save Master Schedule changes.", "error");
+    }
 }
 
-function deleteMasterTask(id) {
+async function deleteMasterTask(id) {
     if (!canManageEmployees) {
         showToast("Administrator access is required to modify the Master Schedule.", "error");
         return;
     }
 
-    masterSchedule = masterSchedule.filter(item => Number(item.id) !== Number(id));
-    saveData();
-    renderMasterSchedule();
-    renderAnalyticsCharts();
+    try {
+        const response = await apiRequest(`/api/master-schedule?id=${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || 'Unable to delete Master Schedule task.');
+        }
+
+        masterSchedule = result.tasks || masterSchedule;
+        renderMasterSchedule();
+        renderAnalyticsCharts();
+        showToast("Master Schedule task deleted successfully.", "success");
+    } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to delete Master Schedule task.", "error");
+    }
 }
 
 function assignFromMaster(workTitle, frequency) {
