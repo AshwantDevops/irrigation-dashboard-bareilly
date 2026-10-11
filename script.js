@@ -1289,10 +1289,6 @@ function getNextMonthlyDate(deadlineRule, assignedAt) {
     const lowerRule = rule.toLowerCase();
     const base = new Date(assignedAt);
 
-    const ordinalMatch = lowerRule.match(
-        /\\b(first|second|third|fourth|last)\\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\\b/
-    );
-
     const weekdays = {
         sunday: 0,
         monday: 1,
@@ -1302,6 +1298,10 @@ function getNextMonthlyDate(deadlineRule, assignedAt) {
         friday: 5,
         saturday: 6
     };
+
+    const ordinalMatch = lowerRule.match(
+        /\b(first|second|third|fourth|last)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/
+    );
 
     if (ordinalMatch) {
         const ordinalName = ordinalMatch[1];
@@ -1319,47 +1319,46 @@ function getNextMonthlyDate(deadlineRule, assignedAt) {
             const date = new Date(year, month, 1);
             const offset = (weekday - date.getDay() + 7) % 7;
             date.setDate(1 + offset + ((ordinal - 1) * 7));
-
-            if (date.getMonth() !== month) return null;
-            return date;
+            return date.getMonth() === month ? date : null;
         };
 
         let candidate = buildOrdinalDate(base.getFullYear(), base.getMonth());
-        copyCurrentTime(candidate, base);
 
-        if (!candidate || candidate.getTime() <= base.getTime()) {
+        if (!candidate || candidate.getTime() < base.getTime()) {
             const nextMonth = new Date(base.getFullYear(), base.getMonth() + 1, 1);
             candidate = buildOrdinalDate(nextMonth.getFullYear(), nextMonth.getMonth());
-            copyCurrentTime(candidate, base);
         }
 
-        return candidate;
+        if (candidate) return copyCurrentTime(candidate, base);
     }
 
-    const dayMatch = lowerRule.match(/\\b(\\d{1,2})(?:st|nd|rd|th)?\\b/);
+    // Match explicit day-of-month rules such as "15th of every month",
+    // "30th of every month", or "1st of every month".
+    const dayMatch = lowerRule.match(/\b(\d{1,2})(?:st|nd|rd|th)?\b/);
     if (dayMatch) {
         const day = Number(dayMatch[1]);
 
-        const buildDayDate = (year, month) => {
-            const lastDay = new Date(year, month + 1, 0).getDate();
-            const date = new Date(year, month, Math.min(day, lastDay));
-            copyCurrentTime(date, base);
-            return date;
-        };
+        if (day >= 1 && day <= 31) {
+            const buildDayDate = (year, month) => {
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                const date = new Date(year, month, Math.min(day, lastDay));
+                return copyCurrentTime(date, base);
+            };
 
-        let candidate = buildDayDate(base.getFullYear(), base.getMonth());
+            let candidate = buildDayDate(base.getFullYear(), base.getMonth());
 
-        if (candidate.getTime() <= base.getTime()) {
-            candidate = buildDayDate(base.getFullYear(), base.getMonth() + 1);
+            // Keep the named date if it is still ahead today, regardless of
+            // whether the assignment happens earlier in the day or later.
+            if (candidate.getTime() < base.getTime()) {
+                candidate = buildDayDate(base.getFullYear(), base.getMonth() + 1);
+            }
+
+            return candidate;
         }
-
-        return candidate;
     }
 
-    // Fallback for a generic monthly task: one calendar month from assignment.
-    const candidate = new Date(base);
-    candidate.setMonth(candidate.getMonth() + 1);
-    return candidate;
+    // Do not silently invent a one-month deadline for an unrecognized rule.
+    throw new Error(`Unsupported monthly deadline rule: "${rule}". Please update the Master Schedule frequency.`);
 }
 
 function calculateQuickScheduleDeadline(type, rule) {
