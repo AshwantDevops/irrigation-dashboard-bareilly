@@ -362,9 +362,9 @@
       "m80": false,
       "m50": false,
       "m10": true,
-      "status": "In Progress",
-      "done": false,
-      "completedAt": null,
+      "status": "Completed",
+      "done": true,
+      "completedAt": "2026-10-14T15:49:38.021Z",
       "remindersSent": [
         "M80",
         "M50"
