@@ -376,12 +376,15 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        task[body.milestone] = true;
+        // Older clients omit "completed", preserving the original check behavior.
+        task[body.milestone] = body.completed === false ? false : true;
 
         if (task.m80 && task.m50 && task.m10) {
           task.status = 'Completed';
-        } else {
+        } else if (task.m80 || task.m50 || task.m10) {
           task.status = 'In Progress';
+        } else {
+          task.status = 'Pending';
         }
       } else {
         return res.status(400).json({
