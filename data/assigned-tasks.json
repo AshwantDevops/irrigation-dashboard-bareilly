@@ -259,7 +259,8 @@
       "completedAt": null,
       "remindersSent": [
         "M80",
-        "M50"
+        "M50",
+        "M10"
       ],
       "whatsappMessageId": "wamid.HBgMOTE5NDE1MjY4OTc1FQIAERgSRDJEQTZFQkZCRTUxNzQ0NTVFAA==",
       "whatsappStatus": "accepted",
@@ -269,9 +270,9 @@
       "whatsappErrorType": null,
       "whatsappErrorData": null,
       "reminderStatus": "accepted",
-      "reminderStatusAt": "2026-10-14T10:55:09.823Z",
-      "reminderMilestone": "M50",
-      "reminderMessageId": "wamid.HBgMOTE5NDE1MjY4OTc1FQIAERgSODc5RUUxNjNERkI5Qzg1Qjg5AA==",
+      "reminderStatusAt": "2026-10-14T11:00:27.136Z",
+      "reminderMilestone": "M10",
+      "reminderMessageId": "wamid.HBgMOTE5NDE1MjY4OTc1FQIAERgSMUZDRThDOTU0MjlBOTVGOUZEAA==",
       "reminderError": null,
       "reminderErrorCode": null,
       "reminderErrorType": null,
@@ -293,7 +294,8 @@
       "done": false,
       "completedAt": null,
       "remindersSent": [
-        "M80"
+        "M80",
+        "M50"
       ],
       "whatsappMessageId": "wamid.HBgMOTE5NDEwNjgwNTkzFQIAERgSNUE0NzVGMkRDMTlGNDM2M0Y3AA==",
       "whatsappStatus": "accepted",
@@ -303,9 +305,9 @@
       "whatsappErrorType": null,
       "whatsappErrorData": null,
       "reminderStatus": "accepted",
-      "reminderStatusAt": "2026-10-14T10:55:10.655Z",
-      "reminderMilestone": "M80",
-      "reminderMessageId": "wamid.HBgMOTE5NDEwNjgwNTkzFQIAERgSQUQ2QUJBQUQyOTIxQjg5NEZGAA==",
+      "reminderStatusAt": "2026-10-14T11:00:27.930Z",
+      "reminderMilestone": "M50",
+      "reminderMessageId": "wamid.HBgMOTE5NDEwNjgwNTkzFQIAERgSMTA4QzBDNzZDMzYxRkFEQjZEAA==",
       "reminderError": null,
       "reminderErrorCode": null,
       "reminderErrorType": null,
