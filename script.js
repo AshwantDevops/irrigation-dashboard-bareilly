@@ -141,7 +141,7 @@ async function loadAssignedTasks() {
     if (tasksLoaded) return tasks;
 
     try {
-        const response = await apiRequest('/api/tasks');
+        const response = await apiRequest('/api/tasks', { cache: 'no-store' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = await response.json();
@@ -153,6 +153,65 @@ async function loadAssignedTasks() {
     }
 
     return tasks;
+}
+
+// Refresh server-owned tasks when the user opens their account/progress or analytics.
+async function refreshAssignedTasks() {
+    try {
+        const response = await apiRequest('/api/tasks', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const data = await response.json();
+        tasks = Array.isArray(data) ? data : (data?.tasks || []);
+        tasksLoaded = true;
+        return true;
+    } catch (error) {
+        console.error('Unable to refresh assigned tasks:', error);
+        return false;
+    }
+}
+
+// Resolve the signed-in user's departmental employee record by email first.
+function getCurrentEmployeeId() {
+    if (!currentUser) return null;
+
+    const email = String(currentUser.email || '').trim().toLowerCase();
+    const employee = employees.find(
+        entry => String(entry.email || '').trim().toLowerCase() === email
+    );
+
+    if (employee && employee.id !== undefined && employee.id !== null) {
+        return String(employee.id);
+    }
+
+    if (
+        currentUser.id !== undefined &&
+        currentUser.id !== null &&
+        !String(currentUser.id).startsWith('google_')
+    ) {
+        return String(currentUser.id);
+    }
+
+    return null;
+}
+
+function isTaskAssignedToCurrentUser(task) {
+    const employeeId = getCurrentEmployeeId();
+
+    if (
+        employeeId !== null &&
+        task.assigneeId !== undefined &&
+        task.assigneeId !== null
+    ) {
+        return String(task.assigneeId) === employeeId;
+    }
+
+    // Compatibility for legacy records that predate assigneeId.
+    return (
+        (task.assigneeId === undefined || task.assigneeId === null) &&
+        String(task.assignee || '').trim().toLowerCase() ===
+            String(currentUser?.name || '').trim().toLowerCase()
+    );
 }
 
 // ================= MASTER TASK STATE =================
@@ -504,8 +563,26 @@ function switchTab(tabId) {
         activeEl.classList.remove('hidden');
         if (tabId === 'Employee') renderEmployeeDirectoryTab();
         if (tabId === 'Schedule') renderMasterSchedule();
-        if (tabId === 'Account') renderAccountTab();
-        if (tabId === 'analytics') setTimeout(() => renderAnalyticsCharts(), 50);
+        if (tabId === 'Account') {
+            renderAccountTab();
+            refreshAssignedTasks().then(() => {
+                const accountTab = document.getElementById('tabAccount');
+                if (accountTab && !accountTab.classList.contains('hidden')) {
+                    renderAccountTab();
+                }
+            });
+        }
+        if (tabId === 'analytics') {
+            setTimeout(() => {
+                renderAnalyticsCharts();
+                refreshAssignedTasks().then(() => {
+                    const analyticsTab = document.getElementById('tabanalytics');
+                    if (analyticsTab && !analyticsTab.classList.contains('hidden')) {
+                        renderAnalyticsCharts();
+                    }
+                });
+            }, 50);
+        }
     }
 
     const activeBtn = document.getElementById(`tabBtn${tabId}`);
@@ -1061,21 +1138,48 @@ function renderTasks() {
     checkOverdueNotifications();
 }
 
-function toggleMilestone(id, milestoneKey) {
-    if (typeof tasks === 'undefined') return;
+async function toggleMilestone(id, milestoneKey) {
+    const task = tasks.find(entry => String(entry.id) === String(id));
+    if (!task) return;
 
-    const task = tasks.find(t => t.id === id);
+    const isPrimaryAdmin =
+        String(currentUser?.email || '').trim().toLowerCase() === 'ashwindhaka@gmail.com';
 
-    if (task) {
-        task[milestoneKey] = !task[milestoneKey];
+    if (!isTaskAssignedToCurrentUser(task) && !isPrimaryAdmin) {
+        showToast("You can update progress only for tasks assigned to you.", "error");
+        renderTasks();
+        return;
+    }
 
-        if (task.m80 && task.m50 && task.m10) {
-            task.status = "Completed";
-        } else {
-            task.status = "In Progress";
+    const completed = !Boolean(task[milestoneKey]);
+
+    try {
+        const response = await apiRequest(`/api/tasks?id=${encodeURIComponent(task.id)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                action: 'milestone',
+                milestone: milestoneKey,
+                completed,
+                token: task.publicToken || ''
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.message || 'Unable to save task progress.');
         }
 
-        saveData();
+        tasks = Array.isArray(result.tasks)
+            ? result.tasks
+            : tasks.map(entry => String(entry.id) === String(task.id) ? result.task : entry);
+
+        renderTasks();
+        renderAccountTab();
+        renderAnalyticsCharts();
+    } catch (error) {
+        console.error('Unable to update task progress:', error);
+        showToast(error.message || "Unable to save task progress.", "error");
+        await refreshAssignedTasks();
         renderTasks();
         renderAccountTab();
     }
@@ -1733,11 +1837,8 @@ function renderAccountTab() {
         }
     }
 
-    const myTasks = tasks.filter(
-        t =>
-            t.assignee &&
-            t.assignee.toLowerCase() === currentUser.name.toLowerCase()
-    );
+    // Prefer stable employee IDs; fall back to names only for legacy records.
+    const myTasks = tasks.filter(isTaskAssignedToCurrentUser);
 
     const completedCount =
         myTasks.filter(
