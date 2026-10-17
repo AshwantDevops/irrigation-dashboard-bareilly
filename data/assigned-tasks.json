@@ -177,7 +177,17 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": []
+      "remindersSent": [
+        "M80"
+      ],
+      "reminderStatus": "accepted",
+      "reminderStatusAt": "2026-10-17T20:10:13.732Z",
+      "reminderMilestone": "M80",
+      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSMDkzMDUwQUMzQUExQjVGREEzAA==",
+      "reminderError": null,
+      "reminderErrorCode": null,
+      "reminderErrorType": null,
+      "reminderErrorData": null
     },
     {
       "id": 1791974038700,
@@ -194,7 +204,17 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": []
+      "remindersSent": [
+        "M80"
+      ],
+      "reminderStatus": "accepted",
+      "reminderStatusAt": "2026-10-17T20:10:14.340Z",
+      "reminderMilestone": "M80",
+      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSMzBEMjhDNzQ3QzhBQTQ4RUI1AA==",
+      "reminderError": null,
+      "reminderErrorCode": null,
+      "reminderErrorType": null,
+      "reminderErrorData": null
     },
     {
       "id": 1791974040012,
@@ -211,14 +231,24 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": [],
+      "remindersSent": [
+        "M80"
+      ],
       "whatsappMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSQ0NBMURCRjkyMjM2MDUzMkU4AA==",
       "whatsappStatus": "accepted",
       "whatsappStatusAt": "2026-10-14T10:34:01.550Z",
       "whatsappError": null,
       "whatsappErrorCode": null,
       "whatsappErrorType": null,
-      "whatsappErrorData": null
+      "whatsappErrorData": null,
+      "reminderStatus": "accepted",
+      "reminderStatusAt": "2026-10-17T20:10:14.938Z",
+      "reminderMilestone": "M80",
+      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSMUU5NDA5MkIyQ0VEMjNEMTIwAA==",
+      "reminderError": null,
+      "reminderErrorCode": null,
+      "reminderErrorType": null,
+      "reminderErrorData": null
     },
     {
       "id": 1791974256629,
