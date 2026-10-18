@@ -495,7 +495,7 @@
       "createdBy": "dineshkr365@gmail.com",
       "createdAt": "2026-10-18T14:53:08.258Z",
       "m80": true,
-      "m50": false,
+      "m50": true,
       "m10": false,
       "status": "In Progress",
       "done": false,
