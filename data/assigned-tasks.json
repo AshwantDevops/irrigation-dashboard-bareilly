@@ -402,9 +402,9 @@
       "createdBy": "dineshkr365@gmail.com",
       "createdAt": "2026-10-14T15:36:27.029Z",
       "m80": false,
-      "m50": false,
+      "m50": true,
       "m10": true,
-      "status": "Completed",
+      "status": "In Progress",
       "done": true,
       "completedAt": "2026-10-14T15:49:38.021Z",
       "remindersSent": [
