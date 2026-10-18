@@ -442,14 +442,24 @@
       "status": "Pending",
       "done": false,
       "completedAt": null,
-      "remindersSent": [],
+      "remindersSent": [
+        "M80"
+      ],
       "whatsappMessageId": "wamid.HBgMOTE4Mjk1MDA5MzMzFQIAERgSN0JEQTA3OTIxMzNERkMwNTlDAA==",
       "whatsappStatus": "accepted",
       "whatsappStatusAt": "2026-10-15T11:07:39.306Z",
       "whatsappError": null,
       "whatsappErrorCode": null,
       "whatsappErrorType": null,
-      "whatsappErrorData": null
+      "whatsappErrorData": null,
+      "reminderStatus": "accepted",
+      "reminderStatusAt": "2026-10-18T11:10:14.596Z",
+      "reminderMilestone": "M80",
+      "reminderMessageId": "wamid.HBgMOTE4Mjk1MDA5MzMzFQIAERgSNjY1QURFQjg3QzgzRUMxRTk5AA==",
+      "reminderError": null,
+      "reminderErrorCode": null,
+      "reminderErrorType": null,
+      "reminderErrorData": null
     }
   ]
 }
