@@ -401,10 +401,10 @@
       "publicToken": "b798d473d23b80e22bf86a1a28222077d3e3",
       "createdBy": "dineshkr365@gmail.com",
       "createdAt": "2026-10-14T15:36:27.029Z",
-      "m80": false,
+      "m80": true,
       "m50": true,
       "m10": true,
-      "status": "In Progress",
+      "status": "Completed",
       "done": true,
       "completedAt": "2026-10-14T15:49:38.021Z",
       "remindersSent": [
