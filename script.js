@@ -1892,184 +1892,147 @@ function renderAccountTab() {
 
 // ================= ANALYTICS CHARTS ENGINE =================
 function renderAnalyticsCharts() {
-    const hasEmployees =
-        Array.isArray(employees) && employees.length > 0;
+    // Use the same deduplicated assignment records and status rules as the
+    // Work Assignment and Status Tracker. This prevents the charts from
+    // counting a different task set or interpreting status differently.
+    const chartTasks = Array.from(new Map(
+        (Array.isArray(tasks) ? tasks : [])
+            .filter(task => task && task.desc && String(task.desc).trim() !== "")
+            .map(task => [String(task.id), task])
+    ).values());
 
-    const hasTasks = Array.isArray(tasks);
-
-    const pieCtx =
-        document.getElementById('overallPieChart');
-
+    const pieCtx = document.getElementById('overallPieChart');
     if (pieCtx) {
-        if (officePieInstance) {
-            officePieInstance.destroy();
-        }
+        if (officePieInstance) officePieInstance.destroy();
 
         let totalCompleted = 0;
         let totalPending = 0;
         let totalInProgress = 0;
 
-        if (hasTasks) {
-            totalCompleted = tasks.filter(
-                t => t.done || t.status === "Completed"
-            ).length;
+        chartTasks.forEach(task => {
+            const status = getTaskStatusBadge(task).label;
+            if (status === 'Completed') {
+                totalCompleted += 1;
+            } else if (status === 'In Progress') {
+                totalInProgress += 1;
+            } else {
+                // Pending and missed-deadline assignments are both unfinished.
+                totalPending += 1;
+            }
+        });
 
-            totalPending = tasks.filter(
-                t =>
-                    !t.done &&
-                    (t.status === "Pending" || !t.status)
-            ).length;
+        const pieData = chartTasks.length
+            ? [totalCompleted, totalPending, totalInProgress]
+            : [0, 0, 0];
 
-            totalInProgress = tasks.filter(
-                t =>
-                    !t.done &&
-                    t.status === "In Progress"
-            ).length;
-        }
-
-        const pieData =
-            totalCompleted === 0 &&
-            totalPending === 0 &&
-            totalInProgress === 0
-                ? [1, 0, 0]
-                : [
-                    totalCompleted,
-                    totalPending,
-                    totalInProgress
-                ];
-
-        officePieInstance = new Chart(
-            pieCtx,
-            {
-                type: 'doughnut',
-                data: {
-                    labels: [
-                        'Completed',
-                        'Pending',
-                        'In Progress'
-                    ],
-                    datasets: [{
-                        data: pieData,
-                        backgroundColor: [
-                            '#10B981',
-                            '#F59E0B',
-                            '#3B82F6'
-                        ],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#94A3B8',
-                                font: { size: 11 }
-                            }
-                        },
-                        tooltip: {
-                            enabled:
-                                hasTasks &&
-                                tasks.length > 0
+        officePieInstance = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending / Missed Deadline', 'In Progress'],
+                datasets: [{
+                    data: pieData,
+                    backgroundColor: ['#10B981', '#F59E0B', '#3B82F6'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94A3B8',
+                            font: { size: 11 }
                         }
-                    }
+                    },
+                    tooltip: { enabled: chartTasks.length > 0 }
                 }
             }
         );
     }
 
-    const barCtx =
-        document.getElementById('employeeHorizontalBar');
-
+    const barCtx = document.getElementById('employeeHorizontalBar');
     if (barCtx) {
-        if (officeBarInstance) {
-            officeBarInstance.destroy();
-        }
+        if (officeBarInstance) officeBarInstance.destroy();
 
-        let staffNames = [];
-        let staffTasksCount = [];
+        // Aggregate by the assignee shown in the tracker, rather than relying
+        // solely on employee-master names that may not match legacy task rows.
+        const employeeCounts = new Map();
+        chartTasks.forEach(task => {
+            const name = String(task.assignee || '').trim();
+            if (!name) return;
+            if (!employeeCounts.has(name)) {
+                employeeCounts.set(name, { completed: 0, total: 0 });
+            }
+            const counts = employeeCounts.get(name);
+            counts.total += 1;
+            if (getTaskStatusBadge(task).label === 'Completed') {
+                counts.completed += 1;
+            }
+        });
 
-        if (hasEmployees) {
-            employees.forEach(emp => {
-                staffNames.push(emp.name);
+        const staffRows = Array.from(employeeCounts.entries())
+            .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
 
-                let count = 0;
+        const staffNames = staffRows.length
+            ? staffRows.map(([name]) => name)
+            : ['No Assigned Tasks'];
+        const completedCounts = staffRows.length
+            ? staffRows.map(([, counts]) => counts.completed)
+            : [0];
 
-                if (hasTasks) {
-                    count = tasks.filter(
-                        t =>
-                            t.assignee &&
-                            t.assignee.toLowerCase() ===
-                                emp.name.toLowerCase() &&
-                            (t.done ||
-                                t.status === "Completed")
-                    ).length;
-                }
-
-                staffTasksCount.push(count);
-            });
-        }
-
-        if (staffNames.length === 0) {
-            staffNames = ["No Staff Available"];
-            staffTasksCount = [0];
-        }
-
-        officeBarInstance = new Chart(
-            barCtx,
-            {
-                type: 'bar',
-                data: {
-                    labels: staffNames,
-                    datasets: [{
-                        label: 'Tasks Completed',
-                        data: staffTasksCount,
-                        backgroundColor: '#3B82F6',
-                        borderRadius: 6
-                    }]
+        officeBarInstance = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: staffNames,
+                datasets: [{
+                    label: 'Tasks Completed',
+                    data: completedCounts,
+                    backgroundColor: '#3B82F6',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: context => {
+                                const row = staffRows[context.dataIndex];
+                                return row ? `Total assigned: ${row[1].total}` : '';
+                            }
+                        }
+                    }
                 },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, 0.15)' },
+                        ticks: {
+                            color: '#94A3B8',
+                            stepSize: 1,
+                            precision: 0
+                        }
                     },
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            grid: {
-                                color:
-                                    'rgba(255, 255, 255, 0.05)'
-                            },
-                            ticks: {
-                                color: '#94A3B8',
-                                stepSize: 1
-                            }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: {
-                                color: '#94A3B8',
-                                font: { size: 10 }
-                            }
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#94A3B8',
+                            font: { size: 10 }
                         }
                     }
                 }
             }
-        );
+        });
     }
 
     setTimeout(() => {
-        if (officePieInstance) {
-            officePieInstance.resize();
-        }
-
-        if (officeBarInstance) {
-            officeBarInstance.resize();
-        }
+        if (officePieInstance) officePieInstance.resize();
+        if (officeBarInstance) officeBarInstance.resize();
     }, 50);
 }
 
