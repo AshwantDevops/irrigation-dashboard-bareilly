@@ -1946,7 +1946,7 @@ function renderAnalyticsCharts() {
                     }
                 }
             }
-        );
+        });
     }
 
     const barCtx = document.getElementById('employeeHorizontalBar');
@@ -2049,7 +2049,7 @@ function renderAnalyticsCharts() {
                     }
                 }
             }
-        );
+        });
     }
 
     setTimeout(() => {
