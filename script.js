@@ -472,6 +472,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindEvent('addEmployeeForm', 'submit', handleAddEmployee);
     bindEvent('taskForm', 'submit', handleAssignTask);
     bindEvent('chatForm', 'submit', handleSendMessage);
+    bindEvent('chatEmployeeSearch', 'input', renderChatEmployeeList);
     bindEvent('addMasterScheduleForm', 'submit', handleAddMasterSchedule);
 
     const stillValid =
@@ -510,6 +511,7 @@ function initDashboard() {
     updateUserUI();
     renderEmployees();
     renderTasks();
+    renderChatEmployeeList();
     renderChat();
     renderMasterSchedule();
     renderAccountTab();
@@ -519,8 +521,7 @@ function initDashboard() {
 // ================= UTILS & STORAGE =================
 function saveData() {
     // Tasks and employee master data are persisted by the Vercel API.
-    // Keep chat locally for now.
-    localStorage.setItem('irr_chat', JSON.stringify(chatMessages));
+    // Chat conversations are saved separately in this browser's localStorage.
 }
 
 function showToast(message, type = 'success') {
@@ -561,6 +562,7 @@ function switchTab(tabId) {
     const activeEl = document.getElementById(`tab${tabId}`);
     if (activeEl) {
         activeEl.classList.remove('hidden');
+        if (tabId === 'chat') { renderChatEmployeeList(); renderChat(); }
         if (tabId === 'Employee') renderEmployeeDirectoryTab();
         if (tabId === 'Schedule') renderMasterSchedule();
         if (tabId === 'Account') {
@@ -1253,69 +1255,204 @@ async function clearAllTasks() {
     }
 }
 
-// ================= CHAT SYSTEM =================
-function handleSendMessage(e) {
-    e.preventDefault();
-    const input = document.getElementById('chatMessageInput');
-    if (!input) return;
+// ================= WEB CHAT SYSTEM =================
+const CHAT_STORAGE_KEY = 'irr_chat_conversations_v1';
+let selectedChatEmployeeId = null;
+let chatConversations = readChatConversations();
 
-    const text = input.value.trim();
-    if (!text || !currentUser) return;
+function readChatConversations() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '{}');
+        return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+    } catch (error) {
+        console.warn('Unable to read saved chat conversations:', error);
+        return {};
+    }
+}
 
-    const time = new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
+function persistChatConversations() {
+    try {
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatConversations));
+    } catch (error) {
+        console.error('Unable to save chat conversations:', error);
+        showToast('Could not save chat in this browser. Local storage may be full.', 'error');
+    }
+}
+
+function chatEmployeeId(employee) {
+    return String(employee?.id ?? employee?.email ?? employee?.name ?? '');
+}
+
+function chatInitials(name) {
+    return String(name || '?').trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase() || '?';
+}
+
+function chatDisplayTime(timestamp) {
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderChatEmployeeList() {
+    const list = document.getElementById('chatEmployeeList');
+    const search = document.getElementById('chatEmployeeSearch');
+    if (!list) return;
+    const query = String(search?.value || '').trim().toLowerCase();
+    const sortedEmployees = [...employees].filter(Boolean).sort((a, b) =>
+        String(a.name || '').localeCompare(String(b.name || ''))
+    );
+    const visibleEmployees = sortedEmployees.filter(employee =>
+        [employee.name, employee.post, employee.email].some(value => String(value || '').toLowerCase().includes(query))
+    );
+    list.innerHTML = '';
+
+    if (!visibleEmployees.length) {
+        const empty = document.createElement('p');
+        empty.className = 'p-5 text-sm text-slate-500 text-center';
+        empty.textContent = employees.length ? 'No employees match your search.' : 'No employee records are available.';
+        list.appendChild(empty);
+        return;
+    }
+
+    visibleEmployees.forEach(employee => {
+        const id = chatEmployeeId(employee);
+        const messages = chatConversations[id] || [];
+        const latest = messages[messages.length - 1];
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'w-full text-left flex items-center gap-3 px-3 py-3 border-b border-slate-100 hover:bg-emerald-50 transition ' +
+            (String(selectedChatEmployeeId) === id ? 'bg-emerald-50' : 'bg-white');
+        button.setAttribute('aria-pressed', String(String(selectedChatEmployeeId) === id));
+
+        const avatar = document.createElement('span');
+        avatar.className = 'w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-sm shrink-0';
+        avatar.textContent = chatInitials(employee.name);
+        const body = document.createElement('span');
+        body.className = 'flex-1 min-w-0';
+        const name = document.createElement('span');
+        name.className = 'flex items-center justify-between gap-2 text-sm font-semibold text-slate-800';
+        const nameText = document.createElement('span');
+        nameText.className = 'truncate';
+        nameText.textContent = employee.name || 'Unnamed employee';
+        const time = document.createElement('span');
+        time.className = 'text-[10px] text-slate-400 shrink-0';
+        time.textContent = latest ? chatDisplayTime(latest.timestamp) : '';
+        name.append(nameText, time);
+        const preview = document.createElement('span');
+        preview.className = 'block text-xs text-slate-500 truncate mt-1';
+        preview.textContent = latest ? latest.text : (employee.post || employee.email || 'Start a conversation');
+        body.append(name, preview);
+        button.append(avatar, body);
+        button.addEventListener('click', () => selectChatEmployee(id));
+        list.appendChild(button);
     });
+}
 
-    chatMessages.push({
-        sender: currentUser.name,
-        text,
-        time
-    });
+function selectChatEmployee(employeeId) {
+    selectedChatEmployeeId = String(employeeId);
+    const selected = employees.find(employee => chatEmployeeId(employee) === selectedChatEmployeeId);
+    const header = document.getElementById('chatConversationHeader');
+    const panel = document.getElementById('chatConversationPanel');
+    const emptyPanel = document.getElementById('chatEmptyPanel');
+    if (!selected) return;
 
-    saveData();
+    if (header) {
+        header.innerHTML = '';
+        const avatar = document.createElement('div');
+        avatar.className = 'w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0';
+        avatar.textContent = chatInitials(selected.name);
+        const info = document.createElement('div');
+        info.className = 'min-w-0';
+        const name = document.createElement('h4');
+        name.className = 'font-bold text-sm text-slate-800 truncate';
+        name.textContent = selected.name || 'Unnamed employee';
+        const status = document.createElement('p');
+        status.className = 'text-xs text-slate-500 truncate';
+        status.textContent = [selected.post, selected.email].filter(Boolean).join(' · ') || 'Employee conversation';
+        info.append(name, status);
+        header.append(avatar, info);
+    }
+    if (panel) panel.classList.remove('hidden');
+    if (panel) panel.classList.add('flex');
+    if (emptyPanel) emptyPanel.classList.add('hidden');
+    renderChatEmployeeList();
     renderChat();
-    input.value = '';
 }
 
 function renderChat() {
     const chatBox = document.getElementById('chatBox');
     if (!chatBox) return;
-
     chatBox.innerHTML = '';
 
-    chatMessages.forEach(msg => {
-        const isMe =
-            currentUser &&
-            msg.sender === currentUser.name;
+    if (!selectedChatEmployeeId) {
+        const empty = document.createElement('div');
+        empty.className = 'h-full min-h-48 flex items-center justify-center text-center text-slate-500 text-sm';
+        empty.textContent = 'Select an employee from the list to view the conversation.';
+        chatBox.appendChild(empty);
+        return;
+    }
 
-        const div = document.createElement('div');
-        div.className =
-            `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+    const messages = chatConversations[selectedChatEmployeeId] || [];
+    if (!messages.length) {
+        const empty = document.createElement('div');
+        empty.className = 'my-6 mx-auto max-w-xs rounded-xl bg-white/80 px-4 py-2 text-center text-xs text-slate-500 shadow-sm';
+        empty.textContent = 'No messages yet. Send a message to start this conversation.';
+        chatBox.appendChild(empty);
+        return;
+    }
 
-        div.innerHTML = `
-            <span class="text-[10px] text-slate-400 mb-0.5 px-1">
-                ${msg.sender} • ${msg.time}
-            </span>
-            <div class="max-w-md p-3 rounded-2xl text-xs ${
-                isMe
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-slate-800 text-slate-200 rounded-bl-none'
-            }">
-                ${msg.text}
-            </div>
-        `;
-
-        chatBox.appendChild(div);
+    messages.forEach(message => {
+        const mine = String(message.senderId) === String(currentUser?.id ?? currentUser?.email ?? currentUser?.name ?? '');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex flex-col ' + (mine ? 'items-end' : 'items-start');
+        const bubble = document.createElement('div');
+        bubble.className = 'max-w-[85%] md:max-w-[70%] rounded-2xl px-3 py-2 shadow-sm text-sm whitespace-pre-wrap break-words ' +
+            (mine ? 'bg-[#d9fdd3] text-slate-800 rounded-tr-sm' : 'bg-white text-slate-800 rounded-tl-sm');
+        bubble.textContent = message.text || '';
+        const meta = document.createElement('span');
+        meta.className = 'text-[10px] text-slate-500 mt-1 px-1';
+        meta.textContent = (mine ? 'You' : (message.senderName || 'Employee')) + ' · ' + chatDisplayTime(message.timestamp);
+        wrapper.append(bubble, meta);
+        chatBox.appendChild(wrapper);
     });
-
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-function clearChat() {
-    chatMessages = [];
-    saveData();
+function handleSendMessage(event) {
+    event.preventDefault();
+    const input = document.getElementById('chatMessageInput');
+    if (!input || !currentUser) return;
+    const text = input.value.trim();
+    if (!text) return;
+    if (!selectedChatEmployeeId) {
+        showToast('Select an employee before sending a message.', 'info');
+        return;
+    }
+
+    const senderId = String(currentUser.id ?? currentUser.email ?? currentUser.name ?? '');
+    if (!chatConversations[selectedChatEmployeeId]) chatConversations[selectedChatEmployeeId] = [];
+    chatConversations[selectedChatEmployeeId].push({
+        senderId,
+        senderName: currentUser.name || currentUser.email || 'You',
+        text,
+        timestamp: new Date().toISOString()
+    });
+    persistChatConversations();
     renderChat();
+    renderChatEmployeeList();
+    input.value = '';
+    input.focus();
+}
+
+function clearChat() {
+    if (!selectedChatEmployeeId) {
+        showToast('Select a conversation first.', 'info');
+        return;
+    }
+    if (!window.confirm('Clear the messages in this conversation from this browser?')) return;
+    delete chatConversations[selectedChatEmployeeId];
+    persistChatConversations();
+    renderChat();
+    renderChatEmployeeList();
 }
 
 // ================= MASTER SCHEDULE =================
