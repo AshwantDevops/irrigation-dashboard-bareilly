@@ -1892,45 +1892,43 @@ function renderAccountTab() {
 
 // ================= ANALYTICS CHARTS ENGINE =================
 function renderAnalyticsCharts() {
-    // Use the same deduplicated assignment records and status rules as the
-    // Work Assignment and Status Tracker. This prevents the charts from
-    // counting a different task set or interpreting status differently.
+    // The tracker and charts must use the same assignment records.
+    // Match the tracker's filters and de-duplicate by task ID.
     const chartTasks = Array.from(new Map(
         (Array.isArray(tasks) ? tasks : [])
             .filter(task => task && task.desc && String(task.desc).trim() !== "")
             .map(task => [String(task.id), task])
     ).values());
 
+    const getChartStatus = task => getTaskStatusBadge(task).label;
+
+    // Overall totals are derived from exactly the same records shown in the tracker.
+    let totalCompleted = 0;
+    let totalPending = 0;
+    let totalInProgress = 0;
+
+    chartTasks.forEach(task => {
+        const status = getChartStatus(task);
+        if (status === "Completed") {
+            totalCompleted += 1;
+        } else if (status === "In Progress") {
+            totalInProgress += 1;
+        } else {
+            // Pending and missed-deadline assignments are both not completed.
+            totalPending += 1;
+        }
+    });
+
     const pieCtx = document.getElementById('overallPieChart');
     if (pieCtx) {
         if (officePieInstance) officePieInstance.destroy();
-
-        let totalCompleted = 0;
-        let totalPending = 0;
-        let totalInProgress = 0;
-
-        chartTasks.forEach(task => {
-            const status = getTaskStatusBadge(task).label;
-            if (status === 'Completed') {
-                totalCompleted += 1;
-            } else if (status === 'In Progress') {
-                totalInProgress += 1;
-            } else {
-                // Pending and missed-deadline assignments are both unfinished.
-                totalPending += 1;
-            }
-        });
-
-        const pieData = chartTasks.length
-            ? [totalCompleted, totalPending, totalInProgress]
-            : [0, 0, 0];
 
         officePieInstance = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Completed', 'Pending / Missed Deadline', 'In Progress'],
                 datasets: [{
-                    data: pieData,
+                    data: [totalCompleted, totalPending, totalInProgress],
                     backgroundColor: ['#10B981', '#F59E0B', '#3B82F6'],
                     borderWidth: 0
                 }]
@@ -1956,31 +1954,36 @@ function renderAnalyticsCharts() {
     if (barCtx) {
         if (officeBarInstance) officeBarInstance.destroy();
 
-        // Aggregate by the assignee shown in the tracker, rather than relying
-        // solely on employee-master names that may not match legacy task rows.
-        const employeeCounts = new Map();
+        // Start with EVERY employee in the employee directory, including staff
+        // with zero assigned/completed tasks, then add legacy assignees that
+        // may exist in the tracker but not in employees.json.
+        const employeeNamesByKey = new Map();
+        (Array.isArray(employees) ? employees : []).forEach(employee => {
+            const name = String(employee?.name || '').trim();
+            if (!name) return;
+            const key = name.toLocaleLowerCase();
+            if (!employeeNamesByKey.has(key)) employeeNamesByKey.set(key, name);
+        });
+
         chartTasks.forEach(task => {
             const name = String(task.assignee || '').trim();
             if (!name) return;
-            if (!employeeCounts.has(name)) {
-                employeeCounts.set(name, { completed: 0, total: 0 });
-            }
-            const counts = employeeCounts.get(name);
-            counts.total += 1;
-            if (getTaskStatusBadge(task).label === 'Completed') {
-                counts.completed += 1;
-            }
+            const key = name.toLocaleLowerCase();
+            if (!employeeNamesByKey.has(key)) employeeNamesByKey.set(key, name);
         });
 
-        const staffRows = Array.from(employeeCounts.entries())
-            .sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
+        const staffRows = Array.from(employeeNamesByKey.values())
+            .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+            .map(name => {
+                const employeeTasks = chartTasks.filter(task =>
+                    String(task.assignee || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase()
+                );
+                const completed = employeeTasks.filter(task => getChartStatus(task) === "Completed").length;
+                return { name, completed, total: employeeTasks.length };
+            });
 
-        const staffNames = staffRows.length
-            ? staffRows.map(([name]) => name)
-            : ['No Assigned Tasks'];
-        const completedCounts = staffRows.length
-            ? staffRows.map(([, counts]) => counts.completed)
-            : [0];
+        const staffNames = staffRows.length ? staffRows.map(row => row.name) : ['No Staff Available'];
+        const completedCounts = staffRows.length ? staffRows.map(row => row.completed) : [0];
 
         officeBarInstance = new Chart(barCtx, {
             type: 'bar',
@@ -2003,7 +2006,7 @@ function renderAnalyticsCharts() {
                         callbacks: {
                             afterLabel: context => {
                                 const row = staffRows[context.dataIndex];
-                                return row ? `Total assigned: ${row[1].total}` : '';
+                                return row ? `Completed: ${row.completed} / Assigned: ${row.total}` : '';
                             }
                         }
                     }
@@ -2012,22 +2015,15 @@ function renderAnalyticsCharts() {
                     x: {
                         beginAtZero: true,
                         grid: { color: 'rgba(148, 163, 184, 0.15)' },
-                        ticks: {
-                            color: '#94A3B8',
-                            stepSize: 1,
-                            precision: 0
-                        }
+                        ticks: { color: '#94A3B8', stepSize: 1, precision: 0 }
                     },
                     y: {
                         grid: { display: false },
-                        ticks: {
-                            color: '#94A3B8',
-                            font: { size: 10 }
-                        }
+                        ticks: { color: '#94A3B8', font: { size: 10 } }
                     }
                 }
             }
-        });
+        );
     }
 
     setTimeout(() => {
