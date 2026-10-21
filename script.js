@@ -1892,32 +1892,26 @@ function renderAccountTab() {
 
 // ================= ANALYTICS CHARTS ENGINE =================
 function renderAnalyticsCharts() {
-    // The tracker and charts must use the same assignment records.
-    // Match the tracker's filters and de-duplicate by task ID.
+    // Match the Work Assignment and Status Tracker: ignore invalid rows and
+    // de-duplicate task IDs before calculating any chart totals.
     const chartTasks = Array.from(new Map(
         (Array.isArray(tasks) ? tasks : [])
             .filter(task => task && task.desc && String(task.desc).trim() !== "")
             .map(task => [String(task.id), task])
     ).values());
 
-    const getChartStatus = task => getTaskStatusBadge(task).label;
+    // Exactly three reporting buckets: Completed, Missed Deadline, and Pending.
+    // "In Progress" remains unfinished and is grouped with Pending for this report.
+    const getChartStatus = task => {
+        const trackerStatus = getTaskStatusBadge(task).label;
+        if (trackerStatus === "Completed") return "Completed";
+        if (trackerStatus === "Missed Deadline") return "Missed Deadline";
+        return "Pending";
+    };
 
-    // Overall totals are derived from exactly the same records shown in the tracker.
-    let totalCompleted = 0;
-    let totalPending = 0;
-    let totalInProgress = 0;
-
-    chartTasks.forEach(task => {
-        const status = getChartStatus(task);
-        if (status === "Completed") {
-            totalCompleted += 1;
-        } else if (status === "In Progress") {
-            totalInProgress += 1;
-        } else {
-            // Pending and missed-deadline assignments are both not completed.
-            totalPending += 1;
-        }
-    });
+    const totalCompleted = chartTasks.filter(task => getChartStatus(task) === "Completed").length;
+    const totalMissed = chartTasks.filter(task => getChartStatus(task) === "Missed Deadline").length;
+    const totalPending = chartTasks.length - totalCompleted - totalMissed;
 
     const pieCtx = document.getElementById('overallPieChart');
     if (pieCtx) {
@@ -1926,10 +1920,10 @@ function renderAnalyticsCharts() {
         officePieInstance = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Completed', 'Pending / Missed Deadline', 'In Progress'],
+                labels: ['Completed', 'Missed Deadline', 'Pending'],
                 datasets: [{
-                    data: [totalCompleted, totalPending, totalInProgress],
-                    backgroundColor: ['#10B981', '#F59E0B', '#3B82F6'],
+                    data: [totalCompleted, totalMissed, totalPending],
+                    backgroundColor: ['#10B981', '#F43F5E', '#F59E0B'],
                     borderWidth: 0
                 }]
             },
@@ -1944,7 +1938,12 @@ function renderAnalyticsCharts() {
                             font: { size: 11 }
                         }
                     },
-                    tooltip: { enabled: chartTasks.length > 0 }
+                    tooltip: {
+                        enabled: chartTasks.length > 0,
+                        callbacks: {
+                            label: context => `${context.label}: ${context.raw} (${chartTasks.length ? Math.round(context.raw / chartTasks.length * 100) : 0}%)`
+                        }
+                    }
                 }
             }
         );
@@ -1954,9 +1953,8 @@ function renderAnalyticsCharts() {
     if (barCtx) {
         if (officeBarInstance) officeBarInstance.destroy();
 
-        // Start with EVERY employee in the employee directory, including staff
-        // with zero assigned/completed tasks, then add legacy assignees that
-        // may exist in the tracker but not in employees.json.
+        // Include every employee, even if they have no assignments, plus any
+        // legacy assignee names present in tracker records.
         const employeeNamesByKey = new Map();
         (Array.isArray(employees) ? employees : []).forEach(employee => {
             const name = String(employee?.name || '').trim();
@@ -1978,35 +1976,61 @@ function renderAnalyticsCharts() {
                 const employeeTasks = chartTasks.filter(task =>
                     String(task.assignee || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase()
                 );
-                const completed = employeeTasks.filter(task => getChartStatus(task) === "Completed").length;
-                return { name, completed, total: employeeTasks.length };
+                return {
+                    name,
+                    completed: employeeTasks.filter(task => getChartStatus(task) === "Completed").length,
+                    missed: employeeTasks.filter(task => getChartStatus(task) === "Missed Deadline").length,
+                    pending: employeeTasks.filter(task => getChartStatus(task) === "Pending").length,
+                    total: employeeTasks.length
+                };
             });
 
         const staffNames = staffRows.length ? staffRows.map(row => row.name) : ['No Staff Available'];
-        const completedCounts = staffRows.length ? staffRows.map(row => row.completed) : [0];
+        const chartValues = key => staffRows.length ? staffRows.map(row => row[key]) : [0];
 
         officeBarInstance = new Chart(barCtx, {
             type: 'bar',
             data: {
                 labels: staffNames,
-                datasets: [{
-                    label: 'Tasks Completed',
-                    data: completedCounts,
-                    backgroundColor: '#3B82F6',
-                    borderRadius: 6
-                }]
+                datasets: [
+                    {
+                        label: 'Completed',
+                        data: chartValues('completed'),
+                        backgroundColor: '#10B981',
+                        stack: 'task-status'
+                    },
+                    {
+                        label: 'Missed Deadline',
+                        data: chartValues('missed'),
+                        backgroundColor: '#F43F5E',
+                        stack: 'task-status'
+                    },
+                    {
+                        label: 'Pending',
+                        data: chartValues('pending'),
+                        backgroundColor: '#F59E0B',
+                        stack: 'task-status'
+                    }
+                ]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: '#94A3B8',
+                            font: { size: 10 }
+                        }
+                    },
                     tooltip: {
                         callbacks: {
-                            afterLabel: context => {
-                                const row = staffRows[context.dataIndex];
-                                return row ? `Completed: ${row.completed} / Assigned: ${row.total}` : '';
+                            afterBody: items => {
+                                const row = staffRows[items[0]?.dataIndex];
+                                return row ? `Total assigned: ${row.total}` : '';
                             }
                         }
                     }
@@ -2014,10 +2038,12 @@ function renderAnalyticsCharts() {
                 scales: {
                     x: {
                         beginAtZero: true,
+                        stacked: true,
                         grid: { color: 'rgba(148, 163, 184, 0.15)' },
                         ticks: { color: '#94A3B8', stepSize: 1, precision: 0 }
                     },
                     y: {
+                        stacked: true,
                         grid: { display: false },
                         ticks: { color: '#94A3B8', font: { size: 10 } }
                     }
