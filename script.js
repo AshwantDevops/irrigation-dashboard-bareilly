@@ -2125,6 +2125,13 @@ function renderAnalyticsCharts() {
         const staffNames = staffRows.length ? staffRows.map(row => row.name) : ['No Staff Available'];
         const chartValues = key => staffRows.length ? staffRows.map(row => row[key]) : [0];
 
+        // Give each employee a dedicated row so Chart.js does not compress or
+        // skip staff labels when the department has more employees than fit in 300px.
+        const barChartContainer = barCtx.parentElement;
+        if (barChartContainer) {
+            barChartContainer.style.height = `${Math.max(360, staffRows.length * 30 + 90)}px`;
+        }
+
         officeBarInstance = new Chart(barCtx, {
             type: 'bar',
             data: {
