@@ -213,8 +213,8 @@
       "createdAt": "2026-10-14T10:33:57.554Z",
       "m80": false,
       "m50": false,
-      "m10": false,
-      "status": "Pending",
+      "m10": true,
+      "status": "In Progress",
       "done": false,
       "completedAt": null,
       "remindersSent": [
