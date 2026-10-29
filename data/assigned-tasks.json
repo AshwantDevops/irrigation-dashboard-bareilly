@@ -219,12 +219,13 @@
       "completedAt": null,
       "remindersSent": [
         "M80",
-        "M50"
+        "M50",
+        "M10"
       ],
       "reminderStatus": "accepted",
-      "reminderStatusAt": "2026-10-22T22:35:10.170Z",
-      "reminderMilestone": "M50",
-      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSNUQ3NjAzNzc1NDY5Q0JFN0ZGAA==",
+      "reminderStatusAt": "2026-10-29T17:45:15.099Z",
+      "reminderMilestone": "M10",
+      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSOEEwRUU0MzMxQTI2QzFBMjI5AA==",
       "reminderError": null,
       "reminderErrorCode": null,
       "reminderErrorType": null,
@@ -247,12 +248,13 @@
       "completedAt": null,
       "remindersSent": [
         "M80",
-        "M50"
+        "M50",
+        "M10"
       ],
       "reminderStatus": "accepted",
-      "reminderStatusAt": "2026-10-22T22:35:10.669Z",
-      "reminderMilestone": "M50",
-      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSMUVBQTRBQURBMTdGMzY1Q0ZDAA==",
+      "reminderStatusAt": "2026-10-29T17:45:15.756Z",
+      "reminderMilestone": "M10",
+      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSRTA2NkIxM0RENkJFQUNENEE5AA==",
       "reminderError": null,
       "reminderErrorCode": null,
       "reminderErrorType": null,
@@ -275,7 +277,8 @@
       "completedAt": null,
       "remindersSent": [
         "M80",
-        "M50"
+        "M50",
+        "M10"
       ],
       "whatsappMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSQ0NBMURCRjkyMjM2MDUzMkU4AA==",
       "whatsappStatus": "accepted",
@@ -285,9 +288,9 @@
       "whatsappErrorType": null,
       "whatsappErrorData": null,
       "reminderStatus": "accepted",
-      "reminderStatusAt": "2026-10-22T22:35:11.153Z",
-      "reminderMilestone": "M50",
-      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSOTQ0RUNFODQ4REM2OTVBMjAxAA==",
+      "reminderStatusAt": "2026-10-29T17:45:16.383Z",
+      "reminderMilestone": "M10",
+      "reminderMessageId": "wamid.HBgMOTE5NDUwMDc4MzEwFQIAERgSNEIwQjc5MjZDOEJEMzdBOUI0AA==",
       "reminderError": null,
       "reminderErrorCode": null,
       "reminderErrorType": null,
